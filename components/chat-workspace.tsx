@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import { getStoredAttribution } from "@/lib/attribution";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -39,7 +40,14 @@ export function ChatWorkspace({ user }: { user: User }) {
 
   async function upgrade() {
     const { data: { session } } = await getSupabaseBrowserClient().auth.getSession();
-    const response = await fetch("/api/billing/checkout", { method: "POST", headers: { Authorization: `Bearer ${session?.access_token ?? ""}` } });
+    const response = await fetch("/api/billing/checkout", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ""}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ attribution: getStoredAttribution() }),
+    });
     const payload = await response.json() as { url?: string; error?: string };
     if (payload.url) window.location.assign(payload.url);
     else setError(payload.error ?? "Billing is not configured yet.");

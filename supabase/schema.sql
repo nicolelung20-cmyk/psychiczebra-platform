@@ -58,3 +58,23 @@ $$;
 
 revoke all on function public.consume_message() from public;
 grant execute on function public.consume_message() to authenticated;
+
+create table public.consultation_leads (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(name) between 1 and 120),
+  work_email text not null check (char_length(work_email) between 3 and 254),
+  company text not null check (char_length(company) between 1 and 160),
+  role text not null check (char_length(role) between 1 and 120),
+  team_size text not null check (char_length(team_size) between 1 and 80),
+  primary_goal text not null check (char_length(primary_goal) between 1 and 1000),
+  budget_range text not null check (char_length(budget_range) between 1 and 80),
+  timeline text not null check (char_length(timeline) between 1 and 80),
+  created_at timestamptz not null default now()
+);
+
+create index consultation_leads_created_at_idx
+  on public.consultation_leads (created_at desc);
+
+alter table public.consultation_leads enable row level security;
+
+revoke all on table public.consultation_leads from anon, authenticated;

@@ -1,45 +1,47 @@
-# SupportFlow AI
+# PsychicZebra
 
-SupportFlow AI is an approval-first SaaS starter for small support teams. It accepts support tickets, produces an AI reply draft, and records an audit trail. It never sends customer messages: a human must review and send every draft in the customer's helpdesk.
+PsychicZebra is a paid AI-chat workspace built with Next.js, Supabase, OpenRouter, and Stripe. It includes passwordless sign-in, server-side message quotas, Stripe Checkout, and a verified webhook that upgrades customers to Pro.
 
-This is a deployable MVP, not a revenue guarantee. Its measurable outcome is reducing time spent drafting routine support replies while retaining human approval.
+## Launch locally
 
-## Quick start
+1. Install Node.js 20 or later and run `npm install`.
+2. Copy `.env.example` to `.env.local`, then fill in the values from Supabase, OpenRouter, and Stripe. Never commit this file.
+3. In Supabase, open the SQL Editor and run `supabase/schema.sql`.
+4. In **Authentication > URL Configuration**, set the Site URL to `http://localhost:3000` and add `http://localhost:3000` to Redirect URLs.
+5. Create a recurring monthly Stripe product, copy its Price ID into `STRIPE_PRICE_ID`, then run `npm run dev`.
 
-```bash
-cp .env.example .env
-# Set SUPPORTFLOW_API_KEYS to a long random value.
-npm start
+Open [http://localhost:3000](http://localhost:3000), sign in through the emailed magic link, and send a message.
+
+## Configure payments
+
+Create a Stripe webhook endpoint at:
+
+```text
+https://your-domain.com/api/billing/webhook
 ```
 
-Open `http://localhost:3000` for the operator dashboard. Run the checks with:
+Subscribe to `checkout.session.completed`, then put the endpoint signing secret in `STRIPE_WEBHOOK_SECRET`. The webhook verifies Stripe's signature before setting the authenticated customer profile to the `pro` plan.
+
+Free accounts receive 20 messages and Pro accounts receive 500 messages. Quotas are enforced inside a Supabase database function, rather than trusted to the browser.
+
+## Deploy to Vercel
+
+1. Push this repository to GitHub and import it into Vercel.
+2. Add every value from `.env.example` in the Vercel project environment settings.
+3. Set `NEXT_PUBLIC_APP_URL` to the deployed HTTPS URL.
+4. Update the Supabase Site URL and redirect URLs, plus the Stripe webhook URL, to that domain.
+
+## Commands
 
 ```bash
-npm test
+npm run dev       # Start local development
+npm run typecheck # Check TypeScript
+npm run build     # Create production build
 ```
 
-## API
+## Approval-first support drafts
 
-Every `/v1` endpoint except `/v1/health` requires an `X-API-Key` header.
-
-```bash
-curl -X POST http://localhost:3000/v1/tickets \
-  -H "X-API-Key: your-api-key" \
-  -H "Content-Type: application/json" \
-  -d '{"customerName":"Ada","message":"Where is my order?","tone":"friendly"}'
-```
-
-The response contains a job ID. Retrieve the approved-for-review draft with `GET /v1/jobs/:id`; retrieve usage with `GET /v1/usage`; and retrieve the traceable event log with `GET /v1/audit`.
-
-## Configuration and deployment
-
-| Variable | Required | Description |
-| --- | --- | --- |
-| `SUPPORTFLOW_API_KEYS` | Yes | Comma-separated API keys. Do not use the example value in production. |
-| `OPENROUTER_API_KEY` | No | Enables OpenRouter draft generation. Without it, the service uses a clearly marked safe fallback draft. |
-| `OPENROUTER_MODEL` | No | Model ID; defaults to `openai/gpt-4o-mini`. |
-| `PORT` | No | HTTP port; defaults to `3000`. |
-
-Deploy with the included `Dockerfile`; configure values as platform-managed secrets. The in-memory job store is intentionally suitable only for a pilot or single instance. Before production, replace it with the supplied Supabase schema, place rate limiting in shared storage, and configure platform monitoring/alerts.
-
-See [docs/OPERATIONS.md](docs/OPERATIONS.md) for the pilot checklist, monitoring, and required approval workflow.
+The included SupportFlow AI service creates support-reply drafts that require
+human review before sending. Start it with `npm run supportflow`; see
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md) for its API, pilot safeguards, and
+separate deployment requirements.

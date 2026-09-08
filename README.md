@@ -38,3 +38,10 @@ npm run dev       # Start local development
 npm run typecheck # Check TypeScript
 npm run build     # Create production build
 ```
+
+## Approval-first support drafts
+
+The included SupportFlow AI service creates support-reply drafts that require
+human review before sending. Start it with `npm run supportflow`; see
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md) for its API, pilot safeguards, and
+separate deployment requirements.

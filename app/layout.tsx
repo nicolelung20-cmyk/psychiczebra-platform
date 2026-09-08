@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Elevated AI | Strategic clarity for ambitious teams",
-  description: "An executive AI workspace for faster decisions, sharper strategy, and measurable growth.",
+  title: "Elevated AI | Executive AI Implementation",
+  description:
+    "AI implementation engagements for executive teams ready to move from strategy to responsible action.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

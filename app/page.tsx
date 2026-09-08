@@ -1,4 +1,5 @@
 import { ConsultationForm } from "@/components/consultation-form";
+import { AttributionCapture } from "@/components/attribution-capture";
 
 const packages = [
   {
@@ -27,6 +28,7 @@ const packages = [
 export default function Home() {
   return (
     <main className="site-shell">
+      <AttributionCapture />
       <header className="site-header">
         <a className="brand" href="#top" aria-label="Elevated AI home">
           <span className="brand-mark">E</span>

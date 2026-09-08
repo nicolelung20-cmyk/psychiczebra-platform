@@ -26,6 +26,16 @@ Subscribe to `checkout.session.completed`, then put the endpoint signing secret 
 
 Free accounts receive 20 messages and Pro accounts receive 500 messages. Quotas are enforced inside a Supabase database function, rather than trusted to the browser.
 
+### Attribute payments from ads and bots
+
+Use a distinct, standard UTM link for each approved ad or bot channel, for example:
+
+```text
+https://your-domain.com/?utm_source=linkedin&utm_medium=paid-social&utm_campaign=launch&utm_content=executive-ad
+```
+
+The app retains `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term` in the browser through sign-in. When an authenticated user upgrades, those values are validated and saved in the corresponding Stripe Checkout Session and Subscription metadata. Use lowercase letters, numbers, hyphens, and underscores only; do not place names, email addresses, or other personal data in UTM values. In Stripe, open the completed Checkout Session or Subscription to see the recorded attribution alongside the payment.
+
 ## Deploy to Vercel
 
 1. Push this repository to GitHub and import it into Vercel.

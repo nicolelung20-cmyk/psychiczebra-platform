@@ -58,16 +58,16 @@ export function ConsultationForm() {
   return (
     <form className="consultation-form" onSubmit={submitConsultation}>
       <div className="form-field">
-        <label htmlFor="fullName">Name</label>
-        <input autoComplete="name" id="fullName" name="fullName" required />
+        <label htmlFor="name">Name</label>
+        <input autoComplete="name" id="name" name="name" required />
       </div>
       <div className="form-field">
-        <label htmlFor="email">Work email</label>
-        <input autoComplete="email" id="email" name="email" required type="email" />
+        <label htmlFor="workEmail">Work email</label>
+        <input autoComplete="email" id="workEmail" name="workEmail" required type="email" />
       </div>
       <div className="form-field">
-        <label htmlFor="title">Title</label>
-        <input autoComplete="organization-title" id="title" name="title" required />
+        <label htmlFor="role">Role</label>
+        <input autoComplete="organization-title" id="role" name="role" required />
       </div>
       <div className="form-field">
         <label htmlFor="company">Company</label>
@@ -85,8 +85,8 @@ export function ConsultationForm() {
         </select>
       </div>
       <div className="form-field">
-        <label htmlFor="investment">Anticipated investment</label>
-        <select defaultValue="" id="investment" name="investment" required>
+        <label htmlFor="budgetRange">Anticipated investment</label>
+        <select defaultValue="" id="budgetRange" name="budgetRange" required>
           <option disabled value="">Select an option</option>
           <option value="5000-10000">$5k–$10k</option>
           <option value="10000-15000">$10k–$15k</option>
@@ -95,11 +95,22 @@ export function ConsultationForm() {
         </select>
       </div>
       <div className="form-field form-field-full">
-        <label htmlFor="priority">What decision or business priority should AI help address?</label>
-        <textarea id="priority" name="priority" required rows={4} />
+        <label htmlFor="primaryGoal">What implementation goal or workflow should AI address?</label>
+        <textarea id="primaryGoal" name="primaryGoal" required rows={4} />
+      </div>
+      <div className="form-field form-field-full">
+        <label htmlFor="timeline">Implementation timeline</label>
+        <select defaultValue="" id="timeline" name="timeline" required>
+          <option disabled value="">Select an option</option>
+          <option value="within-30-days">Within 30 days</option>
+          <option value="within-90-days">Within 90 days</option>
+          <option value="this-quarter">This quarter</option>
+          <option value="next-6-months">Next 6 months</option>
+          <option value="planning">Planning horizon not yet defined</option>
+        </select>
       </div>
       <button className="button button-primary form-submit" disabled={submitting} type="submit">
-        {submitting ? "Sending inquiry..." : "Request an executive discovery call"} <span aria-hidden="true">→</span>
+        {submitting ? "Sending inquiry…" : "Request an executive discovery call"} <span aria-hidden="true">→</span>
       </button>
       <p className="form-privacy">Your details are used only to respond to this implementation inquiry.</p>
       {status && (

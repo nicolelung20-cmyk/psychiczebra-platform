@@ -43,10 +43,10 @@ export default function Home() {
       <section className="hero-section" id="top" aria-labelledby="hero-title">
         <div className="hero-copy">
           <p className="section-kicker">AI implementation for executive teams</p>
-          <h1 id="hero-title">Make AI a disciplined advantage, not another experiment.</h1>
+          <h1 id="hero-title">Executive AI implementation with accountable ownership.</h1>
           <p className="hero-lede">
-            Elevated AI helps leadership teams choose the right opportunities, establish the
-            operating model, and put responsible AI to work where it matters most.
+            Elevated AI helps leadership teams prioritize workflows, define an operating model,
+            and establish governance for implementation decisions.
           </p>
           <div className="hero-actions">
             <a className="button button-primary" href="#discovery">
@@ -58,7 +58,7 @@ export default function Home() {
           </div>
         </div>
         <aside className="hero-card" aria-label="Engagement overview">
-          <p>Built for the decisions that cannot wait</p>
+          <p>Structured support for AI implementation decisions</p>
           <dl>
             <div>
               <dt>Engagements</dt>
@@ -77,30 +77,30 @@ export default function Home() {
       </section>
 
       <section className="intro-section" aria-labelledby="clarity-title">
-        <p className="section-kicker">The leadership problem</p>
+        <p className="section-kicker">Implementation readiness</p>
         <div className="section-heading">
-          <h2 id="clarity-title">Clarity before capability.</h2>
+          <h2 id="clarity-title">Define the operating model before implementation.</h2>
           <p>
-            AI initiatives often stall when the business problem, ownership, and operating
-            constraints are unclear. We create the shared direction your team needs before effort
-            is spent on tools, pilots, or change programs.
+            AI initiatives can lose momentum when the business priority, accountable ownership,
+            and governance requirements are undefined. We establish the decision criteria needed
+            to prioritize implementation work.
           </p>
         </div>
         <div className="outcome-grid">
           <article>
             <span>01</span>
-            <h3>Choose with conviction</h3>
-            <p>Identify the decisions, workflows, and constraints that deserve leadership attention first.</p>
+            <h3>Prioritize workflows</h3>
+            <p>Identify the decisions, workflows, and constraints that warrant executive attention first.</p>
           </article>
           <article>
             <span>02</span>
             <h3>Design for adoption</h3>
-            <p>Connect the implementation approach to the people, governance, and habits that make it usable.</p>
+            <p>Connect the implementation approach to the people, governance, and operating practices that support adoption.</p>
           </article>
           <article>
             <span>03</span>
-            <h3>Move with control</h3>
-            <p>Give executive sponsors an accountable path from a defined priority to informed execution.</p>
+            <h3>Establish control</h3>
+            <p>Give executive sponsors an implementation roadmap with accountable ownership and measurable decision criteria.</p>
           </article>
         </div>
       </section>
@@ -109,11 +109,11 @@ export default function Home() {
         <div className="section-heading engagement-heading">
           <div>
             <p className="section-kicker">Engagements</p>
-            <h2 id="engagements-title">The right level of support for the decision in front of you.</h2>
+            <h2 id="engagements-title">Implementation support aligned to your executive priorities.</h2>
           </div>
           <p>
-            Every engagement begins with an executive conversation. We scope the work to your
-            organization&apos;s priorities, readiness, and internal capacity.
+            Every engagement begins with executive discovery. We scope the work to your
+            organization&apos;s priorities, implementation readiness, and internal capacity.
           </p>
         </div>
         <div className="package-grid">
@@ -138,29 +138,29 @@ export default function Home() {
 
       <section className="process-section" aria-labelledby="process-title">
         <div>
-          <p className="section-kicker">A practical process</p>
-          <h2 id="process-title">High-stakes work needs an operating rhythm.</h2>
+          <p className="section-kicker">Implementation process</p>
+          <h2 id="process-title">A defined process for executive implementation.</h2>
         </div>
         <ol className="process-list">
           <li>
             <span>01</span>
             <div>
-              <h3>Listen</h3>
-              <p>We begin with the business context, decision makers, and concerns that shape a responsible path forward.</p>
+              <h3>Assess</h3>
+              <p>We document the business context, decision makers, workflow constraints, and governance requirements.</p>
             </div>
           </li>
           <li>
             <span>02</span>
             <div>
-              <h3>Focus</h3>
-              <p>Together, we define a worthwhile priority and the conditions required to make progress with confidence.</p>
+              <h3>Prioritize</h3>
+              <p>We define the highest-value workflow priority, accountable ownership, and measurable decision criteria.</p>
             </div>
           </li>
           <li>
             <span>03</span>
             <div>
-              <h3>Activate</h3>
-              <p>Your team leaves with clear ownership, a sequenced plan, and the context to lead the next decision well.</p>
+              <h3>Plan</h3>
+              <p>Your team receives an implementation roadmap, acceptance criteria, and the operating cadence for next decisions.</p>
             </div>
           </li>
         </ol>
@@ -168,18 +168,18 @@ export default function Home() {
 
       <section className="fit-section" aria-labelledby="fit-title">
         <div>
-          <p className="section-kicker">Is this the right conversation?</p>
-          <h2 id="fit-title">Designed for leaders accountable for what happens next.</h2>
+          <p className="section-kicker">Engagement fit</p>
+          <h2 id="fit-title">For leaders accountable for implementation outcomes.</h2>
         </div>
         <div className="fit-content">
           <p>
-            Elevated AI is a fit for executive teams that are ready to treat AI as an operating
-            decision—not a novelty, content experiment, or self-serve software purchase.
+            Elevated AI is for executive teams treating AI as an operating-model and
+            implementation decision, rather than a self-serve software purchase.
           </p>
           <ul>
-            <li>You have a business priority that needs a clearer AI point of view.</li>
-            <li>You need cross-functional alignment before investing in implementation.</li>
-            <li>You want practical guidance that accounts for adoption and responsible use.</li>
+            <li>You have a business priority that requires workflow prioritization and defined decision criteria.</li>
+            <li>You need cross-functional alignment before committing to implementation.</li>
+            <li>You require practical guidance for governance, adoption, and accountable ownership.</li>
           </ul>
         </div>
       </section>
@@ -187,10 +187,10 @@ export default function Home() {
       <section className="discovery-section" id="discovery" aria-labelledby="discovery-title">
         <div className="discovery-copy">
           <p className="section-kicker">Executive discovery call</p>
-          <h2 id="discovery-title">Bring the decision. We&apos;ll bring a sharper way to frame it.</h2>
+          <h2 id="discovery-title">Assess the right next step for your AI implementation.</h2>
           <p>
-            Tell us what is at stake and where your team is today. If there is a strong fit, we
-            will follow up to schedule a focused conversation about the most appropriate next step.
+            Share your primary goal, implementation timeline, and current operating context. If
+            there is a fit, we will schedule an executive discussion to confirm scope and next steps.
           </p>
           <p className="discovery-note">
             This is an inquiry for implementation engagements, not a product demo or subscription trial.

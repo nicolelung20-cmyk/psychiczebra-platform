@@ -1,0 +1,19 @@
+{
+  "name": "supportflow-ai",
+  "version": "1.0.0",
+  "description": "Approval-first AI support reply drafting SaaS",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test",
+    "start": "node src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://localhost:26831/nicolelung20-cmyk/psychiczebra-platform"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "private": true
+}

@@ -48,12 +48,12 @@ export async function POST(request: Request) {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
         "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-        "X-Title": "PsychicZebra",
+        "X-Title": "Elevated AI",
       },
       body: JSON.stringify({
         model: "openai/gpt-4o-mini",
         messages: [
-          { role: "system", content: "You are PsychicZebra: direct, thoughtful, practical, and concise. Help the user make concrete progress." },
+          { role: "system", content: "You are Elevated AI: a direct, thoughtful strategic partner for ambitious business leaders. Be practical, concise, and help the user turn high-priority decisions into concrete next steps." },
           ...body.messages,
         ],
         max_tokens: 1000,

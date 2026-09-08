@@ -28,4 +28,6 @@ button:disabled { opacity: .55; cursor: wait; }
 .composer textarea { min-height: 54px; resize: vertical; }
 .error { color: #ff9c95 !important; font-size: 14px; }
 .fineprint { font-size: 12px; }
-@media (max-width: 680px) { main { padding: 24px 16px; } .hero, .workspace { display: block; } .hero-note { margin-top: 28px; } .sidebar { display: flex; gap: 16px; align-items: center; } .sidebar p { display: none; } .upgrade { margin: 0; } .message { max-width: 94%; } }
+footer { display: flex; justify-content: space-between; gap: 16px; margin-top: 42px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; letter-spacing: .04em; }
+footer span:first-child { color: var(--ink); font-weight: 700; }
+@media (max-width: 680px) { main { padding: 24px 16px; } .hero, .workspace { display: block; } .hero-note { margin-top: 28px; } .sidebar { display: flex; gap: 16px; align-items: center; } .sidebar p { display: none; } .upgrade { margin: 0; } .message { max-width: 94%; } footer { display: block; } footer span { display: block; margin-bottom: 8px; } }

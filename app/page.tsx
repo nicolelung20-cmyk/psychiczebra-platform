@@ -24,16 +24,20 @@ export default function Home() {
     <main>
       <section className="hero">
         <div>
-          <p className="eyebrow">PSYCHICZEBRA</p>
-          <h1>Make your next move with AI.</h1>
-          <p className="lede">A calm, capable workspace for turning a question into useful, finished work.</p>
+          <p className="eyebrow">ELEVATED AI</p>
+          <h1>Turn ambition into your unfair advantage.</h1>
+          <p className="lede">The executive AI workspace for leaders who need sharper strategy, faster decisions, and work that creates measurable growth.</p>
         </div>
         <div className="hero-note">
-          <span>OPENROUTER POWERED</span>
-          <strong>One focused conversation at a time.</strong>
+          <span>BUILT FOR DECISIVE TEAMS</span>
+          <strong>From critical question to confident action.</strong>
         </div>
       </section>
       {user ? <ChatWorkspace user={user} /> : <AuthPanel configured={configured} />}
+      <footer>
+        <span>Elevated AI</span>
+        <span>A product of Elevated Associates LLC</span>
+      </footer>
     </main>
   );
 }

@@ -1,100 +1,38 @@
-# PsychicZebra Platform - Setup Instructions
+# Setup checklist
 
-## What We Built Today
-A complete autonomous AI platform with SaaS, API, B2B, and enterprise solutions.
+This is a real launch checklist for the PsychicZebra AI-chat SaaS. It does not require sharing API keys in chat; keep them only in your local `.env.local` file and the encrypted environment-variable settings of your deployment host.
 
-Repository: https://github.com/nicolelung20-cmyk/psychiczebra-platform
+## Accounts
 
-## What You Need to Do NOW
+Create projects or accounts with:
 
-### 1. Create 5 Free Accounts (5 minutes)
+- [Supabase](https://supabase.com) for authentication and metered customer profiles.
+- [OpenRouter](https://openrouter.ai) for AI model access.
+- [Stripe](https://stripe.com) for subscriptions.
+- [Vercel](https://vercel.com) for hosting.
 
-**Stripe** (Payments)
-- https://dashboard.stripe.com/register
-- Get: STRIPE_SECRET_KEY, STRIPE_PUBLISHABLE_KEY
+## Local configuration
 
-**Supabase** (Database)
-- https://supabase.com
-- Sign up with GitHub
-- Get: SUPABASE_URL, SUPABASE_KEY
+1. Copy `.env.example` to `.env.local`.
+2. Add your Supabase project URL and **anon** key to the two `NEXT_PUBLIC_SUPABASE_*` values.
+3. Add your OpenRouter, Stripe secret, Stripe price, Stripe webhook, and Supabase service-role values. These must remain server-only; do not prefix them with `NEXT_PUBLIC_`.
+4. Run the SQL in `supabase/schema.sql` once in the Supabase SQL Editor.
+5. Configure Supabase passwordless email authentication and add the local and production URLs as valid redirect URLs.
+6. Run `npm install && npm run dev`.
 
-**SendGrid** (Emails)
-- https://sendgrid.com/free
-- Get: SENDGRID_API_KEY
+## Subscription configuration
 
-**Railway** (Backend Host)
-- https://railway.app
-- Sign up with GitHub
+Create one recurring monthly Stripe Price and set `STRIPE_PRICE_ID` to its ID. Add the production webhook endpoint:
 
-**Vercel** (Frontend Host)
-- https://vercel.com
-- Sign up with GitHub
-
-### 2. Collect These API Keys
-
-```
-STRIPE_SECRET_KEY = sk_live_...
-STRIPE_PUBLISHABLE_KEY = pk_live_...
-SUPABASE_URL = https://xxxxx.supabase.co
-SUPABASE_KEY = eyJ...
-SENDGRID_API_KEY = SG.xxx...
-OPENROUTER_API_KEY = (you already have)
-DOMAIN_NAME = psychiczebra.app (or custom)
+```text
+https://your-domain.com/api/billing/webhook
 ```
 
-### 3. Send Keys to Continue Build
+Select the `checkout.session.completed` event and copy that endpoint's signing secret into `STRIPE_WEBHOOK_SECRET`.
 
-Once you have accounts and keys:
-- Reply with the 7 items above
-- I'll deploy complete platform
-- You'll be live with payments in 1 hour
+## Before accepting customers
 
-## Platform Features (Ready to Build)
-
-### SaaS (Web App)
-- Chat interface
-- Freemium model ($0-19/month)
-- Usage dashboard
-- Billing page
-
-### API Service
-- REST endpoints
-- 3 tier pricing ($0-99/month)
-- SDK libraries
-- Developer dashboard
-
-### B2B White Label
-- Custom branding
-- Team management
-- Enterprise features ($500-5000+/month)
-
-### Industry Solutions
-- Pre-built templates
-- One-click deployment
-- Marketing, Support, HR, Sales, Analytics
-
-## Revenue Model
-- SaaS: Freemium conversions
-- API: Per-tier subscriptions
-- B2B: Enterprise contracts
-- Solutions: Industry-specific pricing
-
-**Projected: $25,000+/month in 4 weeks**
-
-## Timeline to Live
-- Day 1: Backend + Frontend deployed
-- Day 2: Stripe + billing live
-- Day 3: API docs + SDKs
-- Day 4: B2B features
-- Day 5: Industry solutions
-- Day 6-7: Marketing + first customers
-
-## Next Session Instructions
-When you continue, just say:
-"Here are my API keys: [paste them]"
-
-And I'll deploy everything automatically.
-
----
-
-**Platform is autonomous and ready to scale!** 🚀
+- Use Stripe test keys and test checkout before switching to live keys.
+- Set a custom domain, update `NEXT_PUBLIC_APP_URL`, then mirror the URL in Supabase and Stripe.
+- Configure transactional email delivery in Supabase so magic links reach customers reliably.
+- Publish a privacy policy, terms of service, refund policy, and support contact appropriate to your jurisdiction.

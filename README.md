@@ -1,6 +1,8 @@
-# PsychicZebra
+# Elevated AI
 
-PsychicZebra is a paid AI-chat workspace built with Next.js, Supabase, OpenRouter, and Stripe. It includes passwordless sign-in, server-side message quotas, Stripe Checkout, and a verified webhook that upgrades customers to Pro.
+Elevated AI is a premium AI workspace for ambitious leaders and growth teams. Built with Next.js, Supabase, OpenRouter, and Stripe, it includes passwordless sign-in, server-side message quotas, Stripe Checkout, and a verified webhook that upgrades customers to Pro.
+
+Elevated AI is a product of Elevated Associates LLC.
 
 ## Launch locally
 

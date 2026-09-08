@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PsychicZebra | AI that moves work forward",
-  description: "A focused AI workspace powered by OpenRouter.",
+  title: "Elevated AI | Strategic clarity for ambitious teams",
+  description: "An executive AI workspace for faster decisions, sharper strategy, and measurable growth.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

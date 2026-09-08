@@ -22,10 +22,10 @@ export function AuthPanel({ configured }: { configured: boolean }) {
   return (
     <section className="panel">
       <p className="eyebrow">GET STARTED</p>
-      <h2>{configured ? "Your work, amplified." : "Add your credentials to launch."}</h2>
+      <h2>{configured ? "Make every decision count." : "Add your credentials to launch."}</h2>
       {configured ? (
         <form onSubmit={signIn}>
-          <p>Sign in with a magic link. New accounts start with 20 free AI requests.</p>
+          <p>Sign in with a secure magic link. Start with 20 complimentary requests and see what strategic momentum feels like.</p>
           <input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="you@company.com" aria-label="Email address" />
           <button disabled={sending}>{sending ? "Sending..." : "Email me a sign-in link"}</button>
           {message && <p className={message.startsWith("Check") ? "fineprint" : "error"}>{message}</p>}

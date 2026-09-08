@@ -1,6 +1,8 @@
 # Setup checklist
 
-This is a real launch checklist for the PsychicZebra AI-chat SaaS. It does not require sharing API keys in chat; keep them only in your local `.env.local` file and the encrypted environment-variable settings of your deployment host.
+This is a real launch checklist for the Elevated AI SaaS. It does not require sharing API keys in chat; keep them only in your local `.env.local` file and the encrypted environment-variable settings of your deployment host.
+
+Elevated AI is a product of Elevated Associates LLC.
 
 ## Accounts
 

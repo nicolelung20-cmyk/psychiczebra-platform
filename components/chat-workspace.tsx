@@ -7,7 +7,7 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 type Message = { role: "user" | "assistant"; content: string };
 
 export function ChatWorkspace({ user }: { user: User }) {
-  const [messages, setMessages] = useState<Message[]>([{ role: "assistant", content: "What would you like to make progress on today?" }]);
+  const [messages, setMessages] = useState<Message[]>([{ role: "assistant", content: "What outcome would create the most momentum for your business today?" }]);
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState("");
   const [working, setWorking] = useState(false);
@@ -48,8 +48,8 @@ export function ChatWorkspace({ user }: { user: User }) {
   return (
     <section className="workspace">
       <aside className="sidebar">
-        <div><strong>{user.email}</strong><p>Free accounts include 20 messages. Upgrade for 500 per month.</p></div>
-        <button className="upgrade" onClick={upgrade}>Upgrade to Pro</button>
+        <div><strong>{user.email}</strong><p>Explore with 20 requests. Unlock 500 monthly requests for continuous strategic support.</p></div>
+        <button className="upgrade" onClick={upgrade}>Elevated Pro</button>
       </aside>
       <div className="chat">
         <div className="messages">
@@ -58,7 +58,7 @@ export function ChatWorkspace({ user }: { user: User }) {
           {error && <p className="error">{error}</p>}
         </div>
         <form className="composer" onSubmit={submit}>
-          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="Ask anything..." aria-label="Message" />
+          <textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="What decision are you ready to accelerate?" aria-label="Message" />
           <button disabled={working}>Send</button>
         </form>
       </div>

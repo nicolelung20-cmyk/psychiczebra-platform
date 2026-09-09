@@ -59,20 +59,22 @@ $$;
 revoke all on function public.consume_message() from public;
 grant execute on function public.consume_message() to authenticated;
 
-create table public.consultations (
+create table public.consultation_leads (
   id uuid primary key default gen_random_uuid(),
-  created_at timestamptz not null default now(),
-  name text not null,
-  work_email text not null,
-  role text not null,
-  company text not null,
-  team_size text not null,
-  budget_range text not null,
-  primary_goal text not null,
-  timeline text not null
+  name text not null check (char_length(name) between 1 and 120),
+  work_email text not null check (char_length(work_email) between 3 and 254),
+  company text not null check (char_length(company) between 1 and 160),
+  role text not null check (char_length(role) between 1 and 120),
+  team_size text not null check (char_length(team_size) between 1 and 80),
+  primary_goal text not null check (char_length(primary_goal) between 1 and 1000),
+  budget_range text not null check (char_length(budget_range) between 1 and 80),
+  timeline text not null check (char_length(timeline) between 1 and 80),
+  created_at timestamptz not null default now()
 );
 
--- RLS is enabled with no policies: only the service-role key (used by
--- app/api/consultations/route.ts) can read or write this table. No one
--- authenticates as a normal user to submit or view leads.
-alter table public.consultations enable row level security;
+create index consultation_leads_created_at_idx
+  on public.consultation_leads (created_at desc);
+
+alter table public.consultation_leads enable row level security;
+
+revoke all on table public.consultation_leads from anon, authenticated;

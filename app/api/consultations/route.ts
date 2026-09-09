@@ -1,73 +1,153 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 
-const TEAM_SIZES = new Set(["1-50", "51-200", "201-500", "501-1000", "1001+"]);
-const BUDGET_RANGES = new Set(["5000-10000", "10000-15000", "15000-plus", "exploring"]);
-const TIMELINES = new Set(["within-30-days", "within-90-days", "this-quarter", "next-6-months", "planning"]);
+const MAX_REQUEST_BYTES = 16 * 1024;
 
-type ConsultationPayload = {
-  name: string;
-  workEmail: string;
-  role: string;
-  company: string;
-  teamSize: string;
-  budgetRange: string;
-  primaryGoal: string;
-  timeline: string;
+const fieldLimits = {
+  name: 120,
+  workEmail: 254,
+  company: 160,
+  role: 120,
+  teamSize: 80,
+  primaryGoal: 1_000,
+  budgetRange: 80,
+  timeline: 80,
+} as const;
+
+type ConsultationLead = {
+  -readonly [Field in keyof typeof fieldLimits]: string;
 };
 
-function isNonEmptyString(value: unknown, maxLength: number) {
-  return typeof value === "string" && value.trim().length > 0 && value.length <= maxLength;
+type BodyReadResult =
+  | { kind: "ok"; value: unknown }
+  | { kind: "invalid" }
+  | { kind: "too-large" };
+
+function response(body: { error: string } | { success: true }, status: number) {
+  return NextResponse.json(body, {
+    status,
+    headers: { "Cache-Control": "no-store" },
+  });
 }
 
-function isValidEmail(value: unknown) {
-  return typeof value === "string" && value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function validate(body: unknown): body is ConsultationPayload {
-  if (typeof body !== "object" || body === null) return false;
-  const value = body as Record<string, unknown>;
-  return (
-    isNonEmptyString(value.name, 200) &&
-    isValidEmail(value.workEmail) &&
-    isNonEmptyString(value.role, 200) &&
-    isNonEmptyString(value.company, 200) &&
-    typeof value.teamSize === "string" && TEAM_SIZES.has(value.teamSize) &&
-    typeof value.budgetRange === "string" && BUDGET_RANGES.has(value.budgetRange) &&
-    isNonEmptyString(value.primaryGoal, 4000) &&
-    typeof value.timeline === "string" && TIMELINES.has(value.timeline)
-  );
+function hasValidText(value: unknown, maxLength: number): value is string {
+  return typeof value === "string" &&
+    value.trim().length > 0 &&
+    value.trim().length <= maxLength &&
+    !/[\u0000-\u001F\u007F]/.test(value);
+}
+
+function isValidEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function validateLead(value: unknown): ConsultationLead | null {
+  if (!isPlainObject(value)) return null;
+
+  const fields = Object.keys(fieldLimits) as Array<keyof ConsultationLead>;
+  if (Object.keys(value).length !== fields.length || !fields.every((field) => Object.hasOwn(value, field))) {
+    return null;
+  }
+
+  const lead = {} as ConsultationLead;
+  for (const field of fields) {
+    const fieldValue = value[field];
+    if (!hasValidText(fieldValue, fieldLimits[field])) return null;
+    lead[field] = fieldValue.trim();
+  }
+
+  return isValidEmail(lead.workEmail) ? lead : null;
+}
+
+async function readJsonBody(request: Request): Promise<BodyReadResult> {
+  const contentLength = request.headers.get("content-length");
+  if (contentLength) {
+    const declaredLength = Number(contentLength);
+    if (!Number.isInteger(declaredLength) || declaredLength < 0) return { kind: "invalid" };
+    if (declaredLength > MAX_REQUEST_BYTES) return { kind: "too-large" };
+  }
+
+  if (!request.body) return { kind: "invalid" };
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      totalBytes += value.byteLength;
+      if (totalBytes > MAX_REQUEST_BYTES) {
+        await reader.cancel();
+        return { kind: "too-large" };
+      }
+      chunks.push(value);
+    }
+
+    const bytes = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+
+    return {
+      kind: "ok",
+      value: JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)),
+    };
+  } catch {
+    return { kind: "invalid" };
+  }
 }
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const contentType = request.headers.get("content-type");
+  if (contentType?.split(";", 1)[0]?.trim().toLowerCase() !== "application/json") {
+    return response({ error: "Content-Type must be application/json." }, 415);
+  }
+
+  const parsedBody = await readJsonBody(request);
+  if (parsedBody.kind === "too-large") {
+    return response({ error: "Request body is too large." }, 413);
+  }
+  if (parsedBody.kind === "invalid") {
+    return response({ error: "Request body must be valid JSON." }, 400);
+  }
+
+  const lead = validateLead(parsedBody.value);
+  if (!lead) {
+    return response({ error: "Submit all required consultation details in the expected format." }, 400);
+  }
+
   try {
-    body = await request.json();
+    const { error } = await createServiceClient()
+      .from("consultation_leads")
+      .insert({
+        name: lead.name,
+        work_email: lead.workEmail,
+        company: lead.company,
+        role: lead.role,
+        team_size: lead.teamSize,
+        primary_goal: lead.primaryGoal,
+        budget_range: lead.budgetRange,
+        timeline: lead.timeline,
+      });
+
+    if (error) {
+      console.error("Consultation lead insertion failed", { code: error.code });
+      return response({ error: "Unable to submit your consultation request. Please try again." }, 503);
+    }
   } catch {
-    return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    console.error("Consultation lead service is unavailable");
+    return response({ error: "Unable to submit your consultation request. Please try again." }, 503);
   }
 
-  if (!validate(body)) {
-    return NextResponse.json({ error: "Please complete every field with a valid value." }, { status: 400 });
-  }
-
-  try {
-    const supabase = createServiceClient();
-    const { error } = await supabase.from("consultations").insert({
-      name: body.name.trim(),
-      work_email: body.workEmail.trim().toLowerCase(),
-      role: body.role.trim(),
-      company: body.company.trim(),
-      team_size: body.teamSize,
-      budget_range: body.budgetRange,
-      primary_goal: body.primaryGoal.trim(),
-      timeline: body.timeline,
-    });
-    if (error) throw error;
-
-    return NextResponse.json({ message: "Thank you. Your inquiry has been received — we will follow up within one business day." });
-  } catch (error) {
-    console.error("Consultation submission failed:", error);
-    return NextResponse.json({ error: "The service is not configured correctly yet. Please try again shortly." }, { status: 500 });
-  }
+  return response({ success: true }, 201);
 }

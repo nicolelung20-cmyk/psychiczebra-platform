@@ -33,8 +33,8 @@ export default function Home() {
         <a className="brand" href="#top" aria-label="Elevated AI home">
           <span className="brand-mark">E</span>
           <span>
-            <strong>Elevated AI</strong>
-            <small>A product of Elevated Associates LLC</small>
+            <strong>EAI</strong>
+            <small>Elevated AI &middot; Elevated Associates LLC</small>
           </span>
         </a>
         <a className="header-cta" href="#discovery">
@@ -205,8 +205,8 @@ export default function Home() {
         <a className="brand" href="#top">
           <span className="brand-mark">E</span>
           <span>
-            <strong>Elevated AI</strong>
-            <small>A product of Elevated Associates LLC</small>
+            <strong>EAI</strong>
+            <small>Elevated AI &middot; Elevated Associates LLC</small>
           </span>
         </a>
         <p>Executive AI implementation engagements</p>

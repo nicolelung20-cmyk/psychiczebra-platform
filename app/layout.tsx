@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Elevated AI | Executive AI Implementation",
+  title: "EAI — Elevated AI | Executive AI Implementation",
   description:
     "AI implementation engagements for executive teams ready to move from strategy to responsible action.",
 };

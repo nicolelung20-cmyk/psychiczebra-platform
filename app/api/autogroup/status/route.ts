@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildAutogroupSnapshot } from "../../../../../src/autogroup247.js";
+import { buildAutogroupSnapshot } from "../../../../src/autogroup247.js";
 
 export const dynamic = "force-dynamic";
 

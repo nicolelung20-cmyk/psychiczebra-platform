@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { createAutogroupMonitor } from "./autogroup247.js";
 
 const MAX_BODY_BYTES = 32_768;
 const WINDOW_MS = 60_000;
@@ -77,6 +78,7 @@ export function createApp(config = {}) {
   const jobs = new Map();
   const audit = [];
   const limits = new Map();
+  const autogroup = createAutogroupMonitor({ accounts: config.autogroupAccounts });
   const aiConfig = {
     openRouterKey: config.openRouterKey ?? process.env.OPENROUTER_API_KEY,
     model: config.model ?? process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
@@ -90,10 +92,18 @@ export function createApp(config = {}) {
     response.end(page);
   }
 
+  async function serveSupportflow(response) {
+    const filename = fileURLToPath(new URL("../public/supportflow.html", import.meta.url));
+    const page = await readFile(filename);
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "X-Content-Type-Options": "nosniff" });
+    response.end(page);
+  }
+
   return createServer(async (request, response) => {
     const url = new URL(request.url, "http://localhost");
     if (request.method === "GET" && url.pathname === "/") return serveDashboard(response);
-    if (request.method === "GET" && url.pathname === "/v1/health") return json(response, 200, { status: "ok" });
+    if (request.method === "GET" && url.pathname === "/supportflow") return serveSupportflow(response);
+    if (request.method === "GET" && url.pathname === "/v1/health") return json(response, 200, { status: "ok", autogroup247: autogroup.getSnapshot().status });
     if (!url.pathname.startsWith("/v1/")) return json(response, 404, { error: "Not found" });
 
     const apiKey = getApiKey(request, apiKeys);
@@ -105,6 +115,12 @@ export function createApp(config = {}) {
     limits.set(apiKey, history);
 
     try {
+      if (request.method === "GET" && url.pathname === "/v1/autogroup/status") return json(response, 200, autogroup.getSnapshot());
+      if (request.method === "POST" && url.pathname === "/v1/autogroup/refresh") {
+        const snapshot = autogroup.refresh();
+        auditEvent("autogroup.refresh", { status: snapshot.status, accounts: snapshot.totals.accounts });
+        return json(response, 200, snapshot);
+      }
       if (request.method === "POST" && url.pathname === "/v1/tickets") {
         const ticket = await readJson(request);
         if (typeof ticket.customerName !== "string" || !ticket.customerName.trim() || typeof ticket.message !== "string" || !ticket.message.trim()) {
@@ -144,5 +160,5 @@ export function createApp(config = {}) {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  createApp().listen(Number(process.env.PORT ?? 3000), () => console.log("SupportFlow AI listening"));
+  createApp().listen(Number(process.env.PORT ?? 3000), () => console.log("AUTOGROUP 247 listening"));
 }

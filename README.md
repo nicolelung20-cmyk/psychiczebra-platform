@@ -1,4 +1,4 @@
-# Elevated AI
+# Elevat
 
 Elevated AI is a premium AI workspace for ambitious leaders and growth teams. Built with Next.js, Supabase, OpenRouter, and Stripe, it includes passwordless sign-in, server-side message quotas, Stripe Checkout, and a verified webhook that upgrades customers to Pro.
 

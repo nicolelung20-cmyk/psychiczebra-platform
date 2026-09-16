@@ -36,3 +36,27 @@ test("accepts the dashboard X-API-Key authentication header", async (t) => {
   assert.equal(result.status, 200);
   assert.equal(result.body.tickets, 0);
 });
+
+test("AUTOGROUP 247 fails closed when no financial sources are connected", async (t) => {
+  const server = createApp({ apiKeys: "test-key" }).listen(0);
+  t.after(() => server.close());
+  const result = await request(server, "/v1/autogroup/status", { headers: { "X-API-Key": "test-key" } });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.system, "AUTOGROUP 247");
+  assert.equal(result.body.status, "OFFLINE");
+  assert.equal(result.body.verified, false);
+  assert.equal(result.body.monitoring.failClosed, true);
+});
+
+test("AUTOGROUP 247 detects a security event and reconciliation mismatch", async (t) => {
+  const server = createApp({
+    apiKeys: "test-key",
+    autogroupAccounts: [{ id: "acct-1", name: "Operating", institution: "Test Bank", balance: 1000, availableBalance: 900, lastSync: new Date().toISOString(), reconciliationStatus: "mismatch", securityAlert: true }],
+  }).listen(0);
+  t.after(() => server.close());
+  const result = await request(server, "/v1/autogroup/status", { headers: { "X-API-Key": "test-key" } });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.status, "RED");
+  assert.equal(result.body.totals.red, 1);
+  assert.ok(result.body.alerts.some((alert) => alert.severity === "P0"));
+});

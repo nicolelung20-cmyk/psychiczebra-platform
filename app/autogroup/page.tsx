@@ -18,18 +18,26 @@ export default function AutogroupPage() {
   const [data, setData] = useState<Snapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function refresh() {
-    try {
-      const response = await fetch("/api/autogroup/status", { cache: "no-store" });
-      if (!response.ok) throw new Error(`Status endpoint returned ${response.status}`);
-      setData(await response.json());
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unable to read AUTOGROUP status");
-    }
-  }
-
-  useEffect(() => { refresh(); const timer = setInterval(refresh, 60_000); return () => clearInterval(timer); }, []);
+  useEffect(() => {
+    let active = true;
+    const refresh = () =>
+      fetch("/api/autogroup/status", { cache: "no-store" })
+        .then((response) => {
+          if (!response.ok) throw new Error(`Status endpoint returned ${response.status}`);
+          return response.json();
+        })
+        .then((snapshot: Snapshot) => {
+          if (!active) return;
+          setData(snapshot);
+          setError(null);
+        })
+        .catch((err) => {
+          if (active) setError(err instanceof Error ? err.message : "Unable to read AUTOGROUP status");
+        });
+    refresh();
+    const timer = setInterval(refresh, 60_000);
+    return () => { active = false; clearInterval(timer); };
+  }, []);
 
   return (
     <main style={{ maxWidth: 1100, margin: "0 auto", padding: 32, fontFamily: "system-ui", color: "#182230" }}>

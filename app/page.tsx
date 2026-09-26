@@ -214,6 +214,11 @@ export default function Home() {
           </span>
         </a>
         <p>Fixed-scope AI implementation for leadership teams</p>
+        <nav className="footer-links" aria-label="Legal">
+          <a href="/terms">Terms</a>
+          <a href="/privacy">Privacy</a>
+          <a href="/refunds">Refunds</a>
+        </nav>
       </footer>
     </main>
   );

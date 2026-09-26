@@ -1,5 +1,6 @@
 import { ConsultationForm } from "@/components/consultation-form";
 import { AttributionCapture } from "@/components/attribution-capture";
+import { paymentLinks } from "@/lib/payment-links";
 
 const packages = [
   {
@@ -139,6 +140,26 @@ export default function Home() {
               <a href="#discovery">Ask about this package <span aria-hidden="true">→</span></a>
             </article>
           ))}
+        </div>
+      </section>
+
+      <section className="intro-section" id="start" aria-labelledby="start-title">
+        <p className="section-kicker">Start now</p>
+        <div className="section-heading">
+          <h2 id="start-title">Not ready for a call? Start with the kit, or reserve your sprint.</h2>
+          <p>
+            The Workflow Brief Kit ($47) walks you through choosing and scoping your first AI
+            workflow. Ready to commit? A $2,500 deposit reserves an Executive AI Readiness Sprint
+            and is credited toward the $5k fee.
+          </p>
+        </div>
+        <div className="hero-actions">
+          <a className="button button-primary" href={paymentLinks.workflowBriefKit}>
+            Buy the Workflow Brief Kit &middot; $47 <span aria-hidden="true">→</span>
+          </a>
+          <a className="text-link" href={paymentLinks.readinessSprintDeposit}>
+            Reserve a Readiness Sprint &middot; $2,500 deposit
+          </a>
         </div>
       </section>
 

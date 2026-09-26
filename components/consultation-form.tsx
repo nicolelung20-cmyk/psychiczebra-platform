@@ -18,7 +18,8 @@ export function ConsultationForm() {
     setSubmitting(true);
     setStatus(null);
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const formData = new FormData(form);
     const payload = Object.fromEntries(formData.entries());
 
     try {
@@ -37,7 +38,7 @@ export function ConsultationForm() {
         return;
       }
 
-      event.currentTarget.reset();
+      form.reset();
       setStatus({
         kind: "success",
         message: body.message ?? "Thank you. Your inquiry has been received.",

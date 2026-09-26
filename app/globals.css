@@ -644,3 +644,28 @@ h3 {
     padding: 28px 0;
   }
 }
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+}
+
+.legal-body {
+  max-width: 720px;
+  padding: 48px 0 96px;
+  line-height: 1.6;
+}
+
+.legal-body h1 {
+  font-size: 40px;
+  margin-bottom: 4px;
+}
+
+.legal-body h2 {
+  font-size: 20px;
+  margin-top: 40px;
+}
+
+.legal-updated {
+  color: var(--ash);
+}

@@ -8,16 +8,17 @@ export default function RefundsPage() {
     <LegalPage title="Refund Policy">
       <h2>Digital products</h2>
       <p>
-        If a downloadable product (such as a template kit) is not what you expected, ask for a
-        refund within 14 days of purchase and we will issue a full refund to your original
-        payment method.
+        Downloadable products (such as template kits) are delivered immediately and are final
+        sale: we do not offer refunds once a digital product has been delivered. If a file is
+        missing, corrupted, or not what the product page described, contact us and we will send
+        a working copy.
       </p>
 
       <h2>Subscriptions</h2>
       <p>
-        You can cancel a subscription at any time; it stays active until the end of the period
-        you already paid for, and you will not be charged again. If you were charged for a
-        renewal you did not intend, contact us within 7 days of that charge for a refund of it.
+        You can cancel a subscription at any time. It stays active until the end of the period
+        you already paid for, and you will not be charged again. We do not give refunds or
+        partial credits for unused time.
       </p>
 
       <h2>Consulting engagements</h2>
@@ -25,6 +26,12 @@ export default function RefundsPage() {
         Fixed-scope engagements are refunded according to the payment and cancellation terms in
         their written agreement or statement of work. If you cancel before work begins, we refund
         the full amount paid.
+      </p>
+
+      <h2>Where the law requires otherwise</h2>
+      <p>
+        Nothing in this policy limits any refund right you have under the consumer protection
+        laws that apply to you.
       </p>
 
       <h2>How refunds are paid</h2>

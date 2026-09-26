@@ -1,0 +1,23 @@
+name: Uptime
+
+# Probes production every 30 minutes. A failed run makes GitHub email the
+# repository owner. Set the repository variable PRODUCTION_URL
+# (Settings > Secrets and variables > Actions > Variables), e.g.
+# https://your-site.netlify.app. Until it is set, the check is skipped.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  probe:
+    if: ${{ vars.PRODUCTION_URL != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Home page responds
+        run: curl --fail --silent --show-error --retry 3 --retry-delay 10 --max-time 30 -o /dev/null "${{ vars.PRODUCTION_URL }}/"
+      - name: API responds
+        run: curl --fail --silent --show-error --retry 3 --retry-delay 10 --max-time 30 -o /dev/null "${{ vars.PRODUCTION_URL }}/api/autogroup/status"

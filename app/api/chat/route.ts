@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured.");
-    const aiResponse = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const aiResponse = await fetch(`${process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1"}/chat/completions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
         "X-Title": "Elevated AI",
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: process.env.OPENROUTER_MODEL ?? "anthropic/claude-opus-latest",
         messages: [
           { role: "system", content: "You are Elevated AI: a direct, thoughtful strategic partner for ambitious business leaders. Be practical, concise, and help the user turn high-priority decisions into concrete next steps." },
           ...body.messages,

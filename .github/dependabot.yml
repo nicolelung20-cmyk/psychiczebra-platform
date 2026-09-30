@@ -15,4 +15,12 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "deps"
+    ignore:
+      # eslint-config-next bundles ESLint plugins that only support ESLint up to 9,
+      # so ESLint 10 makes `npm run lint` crash (see #22, #20).
+      - dependency-name: "eslint"
+        versions: [">=10"]
+      # TypeScript 7 fails the verify check (see #11).
+      - dependency-name: "typescript"
+        versions: [">=7"]
 

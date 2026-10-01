@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { parseBotSummary } from "../../src/autogroup-revenue.js";
 import styles from "./autogroup.module.css";
 
 type Snapshot = {
@@ -20,8 +21,11 @@ const STATE_ORDER = ["RED", "AMBER", "OFFLINE", "GREEN"];
 const REVENUE_DEADLINE = "2026-10-31";
 const KITS_GOAL = 5;
 const STORAGE_KEY = "autogroup_manual_v1";
+const TOKEN_KEY = "autogroup_dash_token";
 
-type Manual = { kits: number; deposit: boolean; gate: boolean[] };
+type Bot = NonNullable<ReturnType<typeof parseBotSummary>>;
+type Revenue = { connected: boolean; reason?: string; kits?: number; deposits?: number; chargeCount?: number; grossCents?: number; truncated?: boolean; since?: string };
+type Manual = { kits: number; deposit: boolean; gate: boolean[]; bot: Bot | null };
 const GATE_ITEMS = [
   "90+ days of paper trading",
   "30+ closed paper trades",
@@ -29,7 +33,7 @@ const GATE_ITEMS = [
   "Max drawdown under 10%",
   "Kill-switch tested",
 ];
-const DEFAULT_MANUAL: Manual = { kits: 0, deposit: false, gate: GATE_ITEMS.map(() => false) };
+const DEFAULT_MANUAL: Manual = { kits: 0, deposit: false, gate: GATE_ITEMS.map(() => false), bot: null };
 
 const LAUNCH: { label: string; href: string; note: string }[] = [
   { label: "Robin", href: "https://github.com/nicolelung20-cmyk/robin#installation", note: "Dark web OSINT (run locally)" },
@@ -50,6 +54,7 @@ function loadManual(): Manual {
       kits: Math.min(KITS_GOAL, Math.max(0, Number(parsed.kits) || 0)),
       deposit: parsed.deposit === true,
       gate: GATE_ITEMS.map((_, i) => parsed.gate?.[i] === true),
+      bot: parsed.bot ?? null,
     };
   } catch {
     return DEFAULT_MANUAL;
@@ -63,6 +68,9 @@ export default function AutogroupPage() {
   const [now, setNow] = useState(() => Date.now());
   const [manual, setManual] = useState<Manual>(DEFAULT_MANUAL);
   const [ready, setReady] = useState(false);
+  const [token, setToken] = useState("");
+  const [revenue, setRevenue] = useState<Revenue | null>(null);
+  const [botError, setBotError] = useState<string | null>(null);
 
   const refresh = useCallback(() =>
     fetch("/api/autogroup/status", { cache: "no-store" })
@@ -74,10 +82,39 @@ export default function AutogroupPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Unable to read AUTOGROUP status")),
   []);
 
+  const loadRevenue = useCallback((dashToken: string) => {
+    if (!dashToken) { setRevenue(null); return Promise.resolve(); }
+    return fetch("/api/autogroup/revenue", { cache: "no-store", headers: { "x-dash-token": dashToken } })
+      .then((response) => response.json())
+      .then((body: Revenue) => setRevenue(body))
+      .catch(() => setRevenue({ connected: false, reason: "Could not reach the revenue endpoint" }));
+  }, []);
+
   useEffect(() => {
-    const initial = setTimeout(() => { setManual(loadManual()); setReady(true); refresh(); }, 0);
+    const initial = setTimeout(() => {
+      setManual(loadManual());
+      let saved = "";
+      try { saved = window.localStorage.getItem(TOKEN_KEY) ?? ""; } catch { /* storage blocked: token must be re-entered */ }
+      setToken(saved);
+      setReady(true);
+      refresh();
+      loadRevenue(saved);
+    }, 0);
     return () => clearTimeout(initial);
-  }, [refresh]);
+  }, [refresh, loadRevenue]);
+
+  const saveToken = (value: string) => {
+    setToken(value);
+    try { window.localStorage.setItem(TOKEN_KEY, value); } catch { /* storage blocked: token will not persist */ }
+    loadRevenue(value);
+  };
+
+  const importBot = (text: string) => {
+    const parsed = parseBotSummary(text);
+    if (!parsed) { setBotError("Not a paper-bot summary.json (needs paper_only and gate.checks)."); return; }
+    setBotError(null);
+    setManual((current) => ({ ...current, bot: parsed }));
+  };
 
   useEffect(() => {
     if (!ready) return;
@@ -122,9 +159,14 @@ export default function AutogroupPage() {
   );
 
   const daysLeft = Math.ceil((new Date(`${REVENUE_DEADLINE}T23:59:59`).getTime() - now) / 86_400_000);
-  const goalDone = manual.kits + (manual.deposit ? 1 : 0);
+  const stripeLive = revenue?.connected === true;
+  const kits = stripeLive ? Math.min(KITS_GOAL, revenue?.kits ?? 0) : manual.kits;
+  const depositSigned = stripeLive ? (revenue?.deposits ?? 0) > 0 : manual.deposit;
+  const goalDone = kits + (depositSigned ? 1 : 0);
   const goalPct = Math.round((goalDone / (KITS_GOAL + 1)) * 100);
-  const gateDone = manual.gate.filter(Boolean).length;
+  const botChecks = manual.bot ? [manual.bot.checks.days, manual.bot.checks.trades, manual.bot.checks.positive, manual.bot.checks.drawdown] : null;
+  const gateValue = (i: number) => (botChecks && i < botChecks.length ? botChecks[i] : manual.gate[i]);
+  const gateDone = GATE_ITEMS.filter((_, i) => gateValue(i)).length;
 
   const exportSnapshot = () => {
     const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), snapshot: data, manual }, null, 2)], { type: "application/json" });
@@ -191,25 +233,40 @@ export default function AutogroupPage() {
       <div className={styles.cols}>
         <section className={styles.card}>
           <h2>Revenue goal · {daysLeft >= 0 ? `${daysLeft} days left` : "deadline passed"}</h2>
-          <p className={styles.muted} style={{ margin: 0 }}>{KITS_GOAL} paid kits + 1 signed sprint deposit by {REVENUE_DEADLINE}. Manual entry until Stripe is connected.</p>
+          <p className={styles.muted} style={{ margin: 0 }}>{KITS_GOAL} paid kits + 1 signed sprint deposit by {REVENUE_DEADLINE}. {stripeLive ? `Live from Stripe (read-only) since ${revenue?.since}${revenue?.truncated ? ", first 100 charges only" : ""}.` : "Manual entry until Stripe is connected."}</p>
           <div className={styles.bar} role="progressbar" aria-valuenow={goalPct} aria-valuemin={0} aria-valuemax={100} aria-label="Revenue goal progress"><div className={styles.barFill} style={{ width: `${goalPct}%` }} /></div>
-          <label className={styles.field}>Kits sold ($47)
-            <input className={styles.input} type="number" min={0} max={KITS_GOAL} value={manual.kits} onChange={(e) => setManual({ ...manual, kits: Math.min(KITS_GOAL, Math.max(0, Number(e.target.value) || 0)) })} />
+          {stripeLive ? <>
+            <div className={styles.field}>Kits sold ($47)<strong>{kits} / {KITS_GOAL}</strong></div>
+            <div className={styles.field}>Sprint deposit ($2,500+)<strong>{depositSigned ? "Yes" : "No"}</strong></div>
+            <div className={styles.field}>Gross paid since start<strong>{money((revenue?.grossCents ?? 0) / 100)}</strong></div>
+          </> : <>
+            <label className={styles.field}>Kits sold ($47)
+              <input className={styles.input} type="number" min={0} max={KITS_GOAL} value={manual.kits} onChange={(e) => setManual({ ...manual, kits: Math.min(KITS_GOAL, Math.max(0, Number(e.target.value) || 0)) })} />
+            </label>
+            <label className={styles.field}>Sprint deposit signed ($2,500)
+              <input type="checkbox" checked={manual.deposit} onChange={(e) => setManual({ ...manual, deposit: e.target.checked })} />
+            </label>
+          </>}
+          <label className={styles.field}>Dashboard token
+            <input className={styles.input} style={{ width: "10rem" }} type="password" autoComplete="off" value={token} onChange={(e) => saveToken(e.target.value)} placeholder="AUTOGROUP_DASH_TOKEN" />
           </label>
-          <label className={styles.field}>Sprint deposit signed ($2,500)
-            <input type="checkbox" checked={manual.deposit} onChange={(e) => setManual({ ...manual, deposit: e.target.checked })} />
-          </label>
+          {token && !stripeLive && revenue?.reason && <p className={styles.muted} style={{ margin: "4px 0 0" }}>Stripe not connected: {revenue.reason}.</p>}
         </section>
 
         <section className={styles.card}>
           <h2>Paper-to-live gate · {gateDone}/{GATE_ITEMS.length}</h2>
-          <p className={styles.muted} style={{ margin: "0 0 8px" }}>Tick each item only after checking the bot&apos;s summary. Agents never place live orders.</p>
+          <p className={styles.muted} style={{ margin: "0 0 8px" }}>Import the bot&apos;s summary.json to fill in the first four checks. Kill-switch is always manual. Agents never place live orders.</p>
+          {manual.bot && <p className={styles.muted} style={{ margin: "0 0 8px" }}>Bot: {manual.bot.closedTrades ?? "?"} closed trades · {manual.bot.daysRunning ?? "?"} days · return {manual.bot.returnPct ?? "?"}% · fees ${manual.bot.feesPaid ?? "?"} · max drawdown {manual.bot.maxDrawdownPct ?? "?"}%</p>}
           {GATE_ITEMS.map((item, i) => (
             <label key={item} className={styles.check}>
-              <input type="checkbox" checked={manual.gate[i]} onChange={(e) => setManual({ ...manual, gate: manual.gate.map((v, j) => (j === i ? e.target.checked : v)) })} />
+              <input type="checkbox" checked={gateValue(i)} disabled={botChecks != null && i < botChecks.length} onChange={(e) => setManual({ ...manual, gate: manual.gate.map((v, j) => (j === i ? e.target.checked : v)) })} />
               {item}
             </label>
           ))}
+          <label className={styles.field} style={{ marginTop: 8 }}>Import summary.json
+            <input type="file" accept="application/json,.json" onChange={(e) => { const file = e.target.files?.[0]; if (file) file.text().then(importBot); e.target.value = ""; }} />
+          </label>
+          {botError && <p role="alert" className={styles.muted} style={{ margin: "4px 0 0" }}>{botError}</p>}
         </section>
       </div>
 

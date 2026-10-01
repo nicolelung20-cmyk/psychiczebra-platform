@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { planCashFlow } from "../../src/autogroup-plan.js";
 import { parseBotSummary } from "../../src/autogroup-revenue.js";
 import styles from "./autogroup.module.css";
 
@@ -22,6 +23,29 @@ const REVENUE_DEADLINE = "2026-10-31";
 const KITS_GOAL = 5;
 const STORAGE_KEY = "autogroup_manual_v1";
 const TOKEN_KEY = "autogroup_dash_token";
+const MONEY_KEY = "autogroup_money_v1";
+
+type Money = { checking: string; taxSavings: string; personalCash: string; monthlyExpenses: string; weeklyDeposits: string };
+const EMPTY_MONEY: Money = { checking: "", taxSavings: "", personalCash: "", monthlyExpenses: "", weeklyDeposits: "" };
+const MONEY_FIELDS: [keyof Money, string][] = [
+  ["checking", "Business checking (negative if overdrawn)"],
+  ["taxSavings", "Tax savings balance"],
+  ["personalCash", "Personal cash available to cover"],
+  ["monthlyExpenses", "Monthly business expenses"],
+  ["weeklyDeposits", "Expected weekly deposits"],
+];
+
+function loadMoney(): Money {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(MONEY_KEY) ?? "null");
+    if (!parsed) return EMPTY_MONEY;
+    const out = { ...EMPTY_MONEY };
+    for (const [key] of MONEY_FIELDS) out[key] = typeof parsed[key] === "string" ? parsed[key] : "";
+    return out;
+  } catch {
+    return EMPTY_MONEY;
+  }
+}
 
 type Bot = NonNullable<ReturnType<typeof parseBotSummary>>;
 type Revenue = { connected: boolean; reason?: string; kits?: number; deposits?: number; chargeCount?: number; grossCents?: number; truncated?: boolean; since?: string };
@@ -77,6 +101,7 @@ export default function AutogroupPage() {
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [botError, setBotError] = useState<string | null>(null);
   const [ops, setOps] = useState<Ops | null>(null);
+  const [cash, setCash] = useState<Money>(EMPTY_MONEY);
 
   const refresh = useCallback(() =>
     fetch("/api/autogroup/status", { cache: "no-store" })
@@ -107,6 +132,7 @@ export default function AutogroupPage() {
   useEffect(() => {
     const initial = setTimeout(() => {
       setManual(loadManual());
+      setCash(loadMoney());
       let saved = "";
       try { saved = window.localStorage.getItem(TOKEN_KEY) ?? ""; } catch { /* storage blocked: token must be re-entered */ }
       setToken(saved);
@@ -136,6 +162,11 @@ export default function AutogroupPage() {
     if (!ready) return;
     try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(manual)); } catch { /* storage blocked: manual tracker just won't persist */ }
   }, [manual, ready]);
+
+  useEffect(() => {
+    if (!ready) return;
+    try { window.localStorage.setItem(MONEY_KEY, JSON.stringify(cash)); } catch { /* storage blocked: figures just won't persist */ }
+  }, [cash, ready]);
 
   useEffect(() => {
     const tick = setInterval(() => setNow(Date.now()), 1000);
@@ -183,6 +214,9 @@ export default function AutogroupPage() {
   const botChecks = manual.bot ? [manual.bot.checks.days, manual.bot.checks.trades, manual.bot.checks.positive, manual.bot.checks.drawdown] : null;
   const gateValue = (i: number) => (botChecks && i < botChecks.length ? botChecks[i] : manual.gate[i]);
   const gateDone = GATE_ITEMS.filter((_, i) => gateValue(i)).length;
+
+  const plan = useMemo(() => planCashFlow(cash), [cash]);
+  const planHasInput = Object.values(cash).some((v) => v.trim() !== "");
 
   const exportSnapshot = () => {
     const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), snapshot: data, manual }, null, 2)], { type: "application/json" });
@@ -285,6 +319,25 @@ export default function AutogroupPage() {
           {botError && <p role="alert" className={styles.muted} style={{ margin: "4px 0 0" }}>{botError}</p>}
         </section>
       </div>
+
+      <section className={styles.card} style={{ marginTop: 16 }}>
+        <h2>Money flow plan</h2>
+        <p className={styles.muted} style={{ margin: "0 0 8px" }}>Type your balances (kept only in this browser). It suggests where each dollar should go; you make the transfers in your bank app. Nothing here moves money. Confirm the tax rate and retirement plan with a CPA.</p>
+        {MONEY_FIELDS.map(([key, label]) => (
+          <label key={key} className={styles.field}>{label}
+            <input className={styles.input} style={{ width: "8rem" }} type="number" inputMode="decimal" value={cash[key]} onChange={(e) => setCash({ ...cash, [key]: e.target.value })} />
+          </label>
+        ))}
+        {planHasInput && <>
+          {plan.alerts.map((a, i) => (
+            <div key={i} className={styles.row}><span><span className={`${styles.sev} ${styles[a.severity] ?? styles.P3}`}>{a.severity}</span>{a.message}</span></div>
+          ))}
+          {plan.transfers.map((t, i) => (
+            <div key={i} className={styles.row}><span><strong>{i + 1}.</strong> {t.from} → {t.to}: <strong>{money(t.amount)}</strong><span className={styles.muted}> · {t.reason}</span></span></div>
+          ))}
+          <p className={styles.muted} style={{ margin: "8px 0 0" }}>Operating buffer target {money(plan.buffer)} · runway {plan.runwayMonths ?? "—"} months · idle {money(plan.idle)}</p>
+        </>}
+      </section>
 
       <section className={styles.card} style={{ marginTop: 16 }}>
         <h2>Ops feed</h2>

@@ -8,5 +8,6 @@ This kit supports ethical outreach for Elevated AI, a product of Elevated Associ
 | [Discovery-call guide](discovery-call-guide.md) | Run an outcome-led, qualification-first conversation. |
 | [Prospect qualification scorecard](prospect-qualification-scorecard.md) | Evaluate fit consistently and identify disqualifiers. |
 | [30-day outreach plan](30-day-outreach-plan.md) | Operate a small, personalized outreach motion and inspect pipeline math. |
+| [Weekly LinkedIn outreach](linkedin-weekly-outreach.md) | Send the five personal notes and post drafts the Monday routine delivers. |
 
 Use only verified customer facts, approved product capabilities, and permissions appropriate to each communication channel. Replace every bracketed placeholder with information that is public, accurate, and relevant to the recipient.

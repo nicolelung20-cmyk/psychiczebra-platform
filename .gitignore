@@ -5,3 +5,6 @@ node_modules/
 .env.local
 coverage/
 *.tsbuildinfo
+.env.*.local
+*.pem
+*.key

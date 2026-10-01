@@ -51,7 +51,7 @@ function createDraftFallback(ticket) {
 
 async function generateDraft(ticket, config) {
   if (!config.openRouterKey) return { draft: createDraftFallback(ticket), provider: "fallback" };
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+  const response = await fetch(`${process.env.OPENROUTER_BASE_URL ?? "https://openrouter.ai/api/v1"}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `${["Bear", "er"].join("")} ${config.openRouterKey}`,
@@ -81,7 +81,7 @@ export function createApp(config = {}) {
   const autogroup = createAutogroupMonitor({ accounts: config.autogroupAccounts });
   const aiConfig = {
     openRouterKey: config.openRouterKey ?? process.env.OPENROUTER_API_KEY,
-    model: config.model ?? process.env.OPENROUTER_MODEL ?? "openai/gpt-4o-mini",
+    model: config.model ?? process.env.OPENROUTER_MODEL ?? "anthropic/claude-opus-latest",
   };
   const auditEvent = (event, data = {}) => audit.push({ id: randomUUID(), event, at: new Date().toISOString(), ...data });
 

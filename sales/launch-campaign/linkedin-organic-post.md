@@ -17,7 +17,7 @@ The work focuses on practical decisions that determine whether a use case is rea
 
 Every organization has different priorities, constraints, and readiness conditions. Elevated AI does not promise a particular outcome; it provides a structured way to assess and, where appropriate, implement a focused workflow.
 
-If your team is evaluating a priority workflow, you can book an executive discovery call at:
+If your team is evaluating a priority workflow, you can book a free 30-minute fit call at:
 https://YOUR-DOMAIN/#discovery
 
 [OPTIONAL: Add a single approved image or document that accurately represents the offer. Do not add unapproved client logos, testimonials, results, or claims.]

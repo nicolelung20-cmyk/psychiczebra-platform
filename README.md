@@ -36,12 +36,17 @@ https://your-domain.com/?utm_source=linkedin&utm_medium=paid-social&utm_campaign
 
 The app retains `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term` in the browser through sign-in. When an authenticated user upgrades, those values are validated and saved in the corresponding Stripe Checkout Session and Subscription metadata. Use lowercase letters, numbers, hyphens, and underscores only; do not place names, email addresses, or other personal data in UTM values. In Stripe, open the completed Checkout Session or Subscription to see the recorded attribution alongside the payment.
 
-## Deploy to Vercel
+## Deploy to Netlify (free plan)
 
-1. Push this repository to GitHub and import it into Vercel.
-2. Add every value from `.env.example` in the Vercel project environment settings.
+Netlify's free plan allows commercial sites, and `netlify.toml` holds the build settings.
+
+1. In Netlify, choose **Add new site > Import an existing project** and pick this repository. Every push to `main` then deploys automatically.
+2. Add every value from `.env.example` under **Site configuration > Environment variables**.
 3. Set `NEXT_PUBLIC_APP_URL` to the deployed HTTPS URL.
 4. Update the Supabase Site URL and redirect URLs, plus the Stripe webhook URL, to that domain.
+5. Set the GitHub repository variable `PRODUCTION_URL` to the same URL so the Uptime workflow checks the site every 30 minutes and emails you when it fails.
+
+Use one host only. Once the Netlify deploy is green, retire the old Railway service.
 
 ## Commands
 

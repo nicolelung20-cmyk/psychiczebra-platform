@@ -25,6 +25,11 @@ const TOKEN_KEY = "autogroup_dash_token";
 
 type Bot = NonNullable<ReturnType<typeof parseBotSummary>>;
 type Revenue = { connected: boolean; reason?: string; kits?: number; deposits?: number; chargeCount?: number; grossCents?: number; truncated?: boolean; since?: string };
+type Ops = {
+  reason?: string;
+  github?: { connected: boolean; reason?: string; pulls?: { repo: string; number: number; title: string; draft: boolean; url?: string; ci: string }[] };
+  linear?: { connected: boolean; reason?: string; project?: { name?: string; state?: string; url?: string; update: { health: string | null; createdAt?: string; body: string } | null } | null };
+};
 type Manual = { kits: number; deposit: boolean; gate: boolean[]; bot: Bot | null };
 const GATE_ITEMS = [
   "90+ days of paper trading",
@@ -71,6 +76,7 @@ export default function AutogroupPage() {
   const [token, setToken] = useState("");
   const [revenue, setRevenue] = useState<Revenue | null>(null);
   const [botError, setBotError] = useState<string | null>(null);
+  const [ops, setOps] = useState<Ops | null>(null);
 
   const refresh = useCallback(() =>
     fetch("/api/autogroup/status", { cache: "no-store" })
@@ -90,6 +96,14 @@ export default function AutogroupPage() {
       .catch(() => setRevenue({ connected: false, reason: "Could not reach the revenue endpoint" }));
   }, []);
 
+  const loadOps = useCallback((dashToken: string) => {
+    if (!dashToken) { setOps(null); return Promise.resolve(); }
+    return fetch("/api/autogroup/ops", { cache: "no-store", headers: { "x-dash-token": dashToken } })
+      .then((response) => response.json())
+      .then((body: Ops) => setOps(body))
+      .catch(() => setOps({ reason: "Could not reach the ops endpoint" }));
+  }, []);
+
   useEffect(() => {
     const initial = setTimeout(() => {
       setManual(loadManual());
@@ -99,14 +113,16 @@ export default function AutogroupPage() {
       setReady(true);
       refresh();
       loadRevenue(saved);
+      loadOps(saved);
     }, 0);
     return () => clearTimeout(initial);
-  }, [refresh, loadRevenue]);
+  }, [refresh, loadRevenue, loadOps]);
 
   const saveToken = (value: string) => {
     setToken(value);
     try { window.localStorage.setItem(TOKEN_KEY, value); } catch { /* storage blocked: token will not persist */ }
     loadRevenue(value);
+    loadOps(value);
   };
 
   const importBot = (text: string) => {
@@ -129,9 +145,9 @@ export default function AutogroupPage() {
   const intervalMs = (data?.monitoring.intervalSeconds ?? 60) * 1000;
   useEffect(() => {
     if (paused) return;
-    const timer = setInterval(refresh, intervalMs);
+    const timer = setInterval(() => { refresh(); loadRevenue(token); loadOps(token); }, intervalMs);
     return () => clearInterval(timer);
-  }, [paused, refresh, intervalMs]);
+  }, [paused, refresh, intervalMs, loadRevenue, loadOps, token]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -269,6 +285,26 @@ export default function AutogroupPage() {
           {botError && <p role="alert" className={styles.muted} style={{ margin: "4px 0 0" }}>{botError}</p>}
         </section>
       </div>
+
+      <section className={styles.card} style={{ marginTop: 16 }}>
+        <h2>Ops feed</h2>
+        {!token && <p className={styles.muted}>Enter the dashboard token to load open PRs, CI and the Linear HQ update.</p>}
+        {token && ops?.reason && <p className={styles.muted}>Ops feed unavailable: {ops.reason}.</p>}
+        {ops?.github && (ops.github.connected ? (
+          ops.github.pulls?.length ? ops.github.pulls.map((pr) => (
+            <div key={`${pr.repo}#${pr.number}`} className={styles.row}>
+              <span><a href={pr.url} target="_blank" rel="noopener noreferrer">{pr.repo.split("/")[1]}#{pr.number}</a> {pr.title}{pr.draft ? " (draft)" : ""}</span>
+              <span className={`${styles.pill} ${pr.ci === "failing" ? styles.RED : pr.ci === "pending" ? styles.AMBER : pr.ci === "passing" ? styles.GREEN : styles.OFFLINE}`} style={{ padding: "2px 10px" }}>{pr.ci}</span>
+            </div>
+          )) : <p className={styles.muted}>No open PRs.</p>
+        ) : <p className={styles.muted}>GitHub not connected: {ops.github.reason}.</p>)}
+        {ops?.linear && (ops.linear.connected ? (
+          ops.linear.project ? <div className={styles.row} style={{ display: "block" }}>
+            <strong>{ops.linear.project.name}</strong> · {ops.linear.project.state}{ops.linear.project.update?.health ? ` · ${ops.linear.project.update.health}` : ""}
+            {ops.linear.project.update && <p className={styles.muted} style={{ whiteSpace: "pre-wrap", margin: "6px 0 0" }}>{ops.linear.project.update.body}</p>}
+          </div> : <p className={styles.muted}>Linear project not found.</p>
+        ) : <p className={styles.muted}>Linear not connected: {ops.linear.reason}.</p>)}
+      </section>
 
       <section className={styles.card} style={{ marginTop: 16 }}>
         <h2>Launchpad</h2>

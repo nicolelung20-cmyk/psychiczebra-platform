@@ -60,5 +60,10 @@ export async function GET(request: Request) {
     github(process.env.GITHUB_READ_TOKEN, parseRepos(process.env.AUTOGROUP_REPOS)),
     linear(process.env.LINEAR_API_KEY),
   ]);
-  return NextResponse.json({\n    github: gh,\n    linear: lin,\n    factory: { ...factorySummary(), assets: FACTORY_ASSETS },\n    generatedAt: new Date().toISOString(),\n  });
+  return NextResponse.json({
+    github: gh,
+    linear: lin,
+    factory: { ...factorySummary(), assets: FACTORY_ASSETS },
+    generatedAt: new Date().toISOString(),
+  });
 }

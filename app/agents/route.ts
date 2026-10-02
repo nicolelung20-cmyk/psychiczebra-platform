@@ -1,2 +1,0 @@
-import { NextResponse } from "next/server";
-export async function GET(){return NextResponse.json({status:"active",architecture:"direct-agent-command-center",agents:[{id:"robin",mode:"mcp-endpoint",through:"direct"},{id:"claude",mode:"connector",through:"direct"},{id:"codex",mode:"control-plane",through:"direct"},{id:"orchestrator",mode:"global-router",through:"direct"}],note:"Agent credentials and provider secrets remain server-side."})}

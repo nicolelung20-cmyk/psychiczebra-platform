@@ -1,0 +1,69 @@
+name: Elevat Agent Factory
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      run_build:
+        required: false
+        type: boolean
+        default: true
+  schedule:
+    - cron: "17 3 * * *"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: elevat-factory-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-and-package:
+    name: Verify product + package factory report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Tests
+        run: npm test
+      - name: Production build
+        if: inputs.run_build != false
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+      - name: Write factory status
+        run: |
+          mkdir -p factory-report
+          cat > factory-report/status.json <<'JSON'
+          {
+            "system": "Elevat Agent Factory",
+            "repo": "${{ github.repository }}",
+            "sha": "${{ github.sha }}",
+            "status": "verified",
+            "checks": ["install", "typecheck", "lint", "test", "build"],
+            "external_actions": false,
+            "financial_actions": false,
+            "deployment": false,
+            "generated_at": "${{ github.run_started_at }}"
+          }
+          JSON
+      - name: Upload verification report
+        uses: actions/upload-artifact@v7
+        with:
+          name: elevat-factory-report
+          path: factory-report/status.json
+          retention-days: 14

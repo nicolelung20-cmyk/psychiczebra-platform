@@ -2,6 +2,12 @@ name: Elevat Agent Factory
 
 on:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      run_build:
+        required: false
+        type: boolean
+        default: true
   schedule:
     - cron: "17 3 * * *"
   push:
@@ -35,6 +41,7 @@ jobs:
       - name: Tests
         run: npm test
       - name: Production build
+        if: inputs.run_build != false
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1

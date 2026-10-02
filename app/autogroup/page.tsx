@@ -360,7 +360,7 @@ export default function AutogroupPage() {
       </section>
 
       <section className={styles.card} style={{ marginTop: 16 }}>
-        <h2>Launchpad</h2>
+      {ops?.factory && (\n        <section className={styles.card} style={{ marginTop: 16 }}>\n          <h2>Product Factory · {ops.factory.total} connected assets</h2>\n          <p className={styles.muted} style={{ margin: "0 0 8px" }}>Read-only GitHub factory catalog. Financial and external actions remain separately authorized.</p>\n          {Object.entries(ops.factory.counts).map(([kind, count]) => (\n            <div key={kind} className={styles.row}><span><strong>{kind}</strong></span><span>{count}</span></div>\n          ))}\n          {ops.factory.assets.map((asset) => (\n            <div key={asset.repo} className={styles.row}>\n              <span><strong>{asset.repo}</strong> · {asset.purpose}<span className={styles.muted}> · {asset.revenuePath}</span></span>\n              <span className={`${styles.pill} ${asset.risk === "review" ? styles.AMBER : styles.GREEN}`} style={{ padding: "2px 10px" }}>{asset.risk}</span>\n            </div>\n          ))}\n        </section>\n      )}\n\n        <h2>Launchpad</h2>
         <div className={styles.launch}>
           {LAUNCH.map((l) => (
             <a key={l.label} className={styles.link} href={l.href} target="_blank" rel="noopener noreferrer"><strong>{l.label}</strong><span className={styles.linkNote}>{l.note}</span></a>

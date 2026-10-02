@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 export type FactoryAsset = {
   repo: string;
   class: "product" | "agent" | "research";

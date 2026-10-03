@@ -41,7 +41,7 @@ export default function Home() {
             <small>Elevated AI &middot; Elevated Associates LLC</small>
           </span>
         </a>
-        <a className="header-cta" href="#discovery">
+        <a className="header-cta" href="/hermes">Open Hermes <span aria-hidden="true">→</span></a>\n        <a className="header-cta" href="#discovery">
           Book a free fit call <span aria-hidden="true">→</span>
         </a>
       </header>

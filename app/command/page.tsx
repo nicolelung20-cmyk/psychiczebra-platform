@@ -10,7 +10,7 @@ type Job = { id: string; status: string; priority: number; input: { command?: st
 type Approval = { id: string; action: string; target: string | null; created_at: string };
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!;
 
 export default function CommandPage() {
   const [command, setCommand] = useState("");

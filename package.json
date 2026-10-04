@@ -12,7 +12,6 @@
     "supportflow": "node src/server.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.21.0",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.2",
     "next": "^16.3.6",
@@ -22,9 +21,9 @@
   "devDependencies": {
     "@types/node": "^26.6.3",
     "@types/react": "^19.1.12",
-    "@types/react-dom": "^19.3.0",
+    "@types/react-dom": "^19.1.12",
     "eslint": "^9.39.5",
-    "eslint-config-next": "^16.3.6",
+    "eslint-config-next": "^16.3.5",
     "typescript": "^5.9.2"
   },
   "type": "module"

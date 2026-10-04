@@ -21,6 +21,7 @@ export default function CommandPage() {
   const [status, setStatus] = useState("Connecting");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [signals, setSignals] = useState<any[]>([]);
 
   async function load() {
     const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_KEY);
@@ -42,6 +43,7 @@ export default function CommandPage() {
     setProjects(payload.projects ?? []);
     setJobs(payload.jobs ?? []);
     setApprovals(payload.approvals ?? []);
+    setSignals((payload.audit ?? []).filter((item: any) => String(item.event_type).startsWith("tiktok.")).slice(0, 12));
     setStatus("Live");
     setError("");
   }
@@ -144,6 +146,20 @@ export default function CommandPage() {
               <div className={styles.row} key={job.id}>
                 <span>{job.input?.command ?? "Command"}</span>
                 <small>{job.status} · {job.input?.routedAgent ?? "routing"}</small>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className={styles.card}>
+        <div className={styles.cardTitle}><span>Live signals</span><b>TikTok LIVE</b></div>
+        {signals.length === 0 ? <p className={styles.empty}>No TikTok LIVE events received yet.</p> : (
+          <div className={styles.list}>
+            {signals.map(item => (
+              <div className={styles.row} key={item.id}>
+                <span><i className={styles.dot} />{String(item.event_type).replace("tiktok.", "")} · {item.actor}</span>
+                <small>{new Date(item.created_at).toLocaleTimeString()}</small>
               </div>
             ))}
           </div>

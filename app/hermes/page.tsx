@@ -15,6 +15,9 @@ export default function HermesPage() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("Connecting…");
+  const [email, setEmail] = useState("");
+  const [authMessage, setAuthMessage] = useState("");
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
     const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -23,8 +26,10 @@ export default function HermesPage() {
       if (!mounted) return;
       if (!data.session) {
         setStatus("Sign in required");
+        setSessionReady(false);
         return;
       }
+      setSessionReady(true);
       try {
         const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-gateway`, {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
@@ -37,6 +42,43 @@ export default function HermesPage() {
     });
     return () => { mounted = false; };
   }, []);
+
+  async function signIn(e: FormEvent) {
+    e.preventDefault();
+    setAuthMessage("");
+    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin + "/hermes" },
+    });
+    setAuthMessage(error ? error.message : "Check your email for the secure Hermes sign-in link.");
+  }
+
+  async function runRevenue(e?: FormEvent) {
+    e?.preventDefault();
+    setBusy(true);
+    try {
+      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) throw new Error("Sign in to run Hermes.");
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-orchestrator`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${data.session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "dispatch" }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.ok) throw new Error(j?.error || j?.detail || "Hermes dispatch failed");
+      setMessages((m) => [...m, { role: "assistant", content: `Revenue workflow dispatched. ${j.jobs?.length ?? 0} jobs queued. Trading remains paper-only; no money movement was authorized.` }]);
+      setStatus("Running");
+    } catch (err) {
+      setMessages((m) => [...m, { role: "assistant", content: `Run error: ${err instanceof Error ? err.message : "Unknown error"}` }]);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function send(e: FormEvent) {
     e.preventDefault();
@@ -83,6 +125,17 @@ export default function HermesPage() {
         </span>
       </header>
 
+      {!sessionReady && status === "Sign in required" && (
+        <section aria-label="Hermes sign in" style={{ marginBottom: 14, padding: 16, border: "1px solid rgba(127,127,127,.25)", borderRadius: 14 }}>
+          <strong>Sign in to run Hermes</strong>
+          <form onSubmit={signIn} style={{ display: "flex", gap: 10, marginTop: 10 }}>
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address" style={{ flex: 1, minWidth: 0, minHeight: 44, borderRadius: 10, border: "1px solid rgba(127,127,127,.35)", padding: "0 12px" }} />
+            <button type="submit" style={{ border: 0, borderRadius: 10, padding: "0 14px", fontWeight: 700 }}>Email sign-in</button>
+          </form>
+          {authMessage && <p style={{ marginBottom: 0, fontSize: 13, opacity: .75 }}>{authMessage}</p>}
+        </section>
+      )}
+
       <section aria-label="Hermes conversation" style={{ border: "1px solid rgba(127,127,127,.25)", borderRadius: 18, padding: 14, minHeight: 420 }}>
         <div style={{ display: "grid", gap: 12 }}>
           {messages.map((m, i) => (
@@ -93,6 +146,12 @@ export default function HermesPage() {
           {busy && <article aria-live="polite" style={{ opacity: .65 }}>Hermes is thinking…</article>}
         </div>
       </section>
+
+      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+        <button type="button" onClick={() => runRevenue()} disabled={busy || !sessionReady} style={{ minHeight: 48, border: 0, borderRadius: 12, padding: "0 18px", fontWeight: 800 }}>
+          {busy ? "Running…" : "▶ Run revenue engine"}
+        </button>
+      </div>
 
       <form onSubmit={send} style={{ display: "flex", gap: 10, marginTop: 12 }}>
         <input aria-label="Message Hermes" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask Hermes…" disabled={busy} style={{ flex: 1, minWidth: 0, minHeight: 48, borderRadius: 12, border: "1px solid rgba(127,127,127,.35)", padding: "0 14px", fontSize: 16 }} />

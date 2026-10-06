@@ -10,7 +10,7 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default function HermesPage() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hermes is ready. Ask me to inspect status, run a paper-trading check, or analyze the system." },
+    { role: "assistant", content: "Hermes is online. Tell me what you want done. I’ll plan it, route it, execute through the available worker pipeline, and report the result." },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,43 +54,17 @@ export default function HermesPage() {
     setAuthMessage(error ? error.message : "Check your email for the secure Hermes sign-in link.");
   }
 
-  async function runRevenue(e?: FormEvent) {
+  async function run(e?: FormEvent) {
     e?.preventDefault();
-    setBusy(true);
-    try {
-      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) throw new Error("Sign in to run Hermes.");
-      const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-orchestrator`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${data.session.access_token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ action: "dispatch" }),
-      });
-      const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j?.error || j?.detail || "Hermes dispatch failed");
-      setMessages((m) => [...m, { role: "assistant", content: `Revenue workflow dispatched. ${j.jobs?.length ?? 0} jobs queued. Trading remains paper-only; no money movement was authorized.` }]);
-      setStatus("Running");
-    } catch (err) {
-      setMessages((m) => [...m, { role: "assistant", content: `Run error: ${err instanceof Error ? err.message : "Unknown error"}` }]);
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function send(e: FormEvent) {
-    e.preventDefault();
-    const text = input.trim();
-    if (!text || busy) return;
+    const commandText = input.trim();
+    if (!commandText || busy || !sessionReady) return;
     setInput("");
-    setMessages((m) => [...m, { role: "user", content: text }]);
+    setMessages((m) => [...m, { role: "user", content: commandText }]);
     setBusy(true);
     try {
       const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const { data } = await supabase.auth.getSession();
-      if (!data.session) throw new Error("Sign in to use Hermes.");
+      if (!data.session) throw new Error("Secure Hermes session required.");
       const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-gateway`, {
         method: "POST",
         headers: {
@@ -98,13 +72,20 @@ export default function HermesPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          command: "chat",
-          messages: [...messages, { role: "user", content: text }],
+          command: "run",
+          input: commandText,
         }),
       });
       const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j?.detail || j?.error || "Hermes request failed");
-      setMessages((m) => [...m, { role: "assistant", content: j.message || "Hermes returned no text." }]);
+      if (!r.ok || !j.ok) throw new Error(j?.detail || j?.error || "Hermes execution failed");
+      setMessages((m) => [
+        ...m,
+        {
+          role: "assistant",
+          content: j.message || `Queued for Hermes execution. Job ${j.job_id ?? "created"}.`,
+        },
+      ]);
+      setStatus("Running");
     } catch (err) {
       setMessages((m) => [...m, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}` }]);
     } finally {
@@ -118,7 +99,7 @@ export default function HermesPage() {
         <div>
           <p style={{ margin: 0, opacity: .65, fontSize: 13 }}>ELEVAT AI</p>
           <h1 style={{ margin: "4px 0", fontSize: 30 }}>Hermes</h1>
-          <p style={{ margin: 0, opacity: .7 }}>Interactive command center</p>
+          <p style={{ margin: 0, opacity: .7 }}>Owner command center</p>
         </div>
         <span aria-live="polite" style={{ padding: "8px 12px", border: "1px solid currentColor", borderRadius: 999, fontSize: 13 }}>
           ● {status}
@@ -127,10 +108,10 @@ export default function HermesPage() {
 
       {!sessionReady && status === "Sign in required" && (
         <section aria-label="Hermes sign in" style={{ marginBottom: 14, padding: 16, border: "1px solid rgba(127,127,127,.25)", borderRadius: 14 }}>
-          <strong>Sign in to run Hermes</strong>
+          <strong>One secure sign-in to activate your owner session</strong>
           <form onSubmit={signIn} style={{ display: "flex", gap: 10, marginTop: 10 }}>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address" style={{ flex: 1, minWidth: 0, minHeight: 44, borderRadius: 10, border: "1px solid rgba(127,127,127,.35)", padding: "0 12px" }} />
-            <button type="submit" style={{ border: 0, borderRadius: 10, padding: "0 14px", fontWeight: 700 }}>Email sign-in</button>
+            <button type="submit" style={{ border: 0, borderRadius: 10, padding: "0 14px", fontWeight: 700 }}>Activate</button>
           </form>
           {authMessage && <p style={{ marginBottom: 0, fontSize: 13, opacity: .75 }}>{authMessage}</p>}
         </section>
@@ -143,25 +124,19 @@ export default function HermesPage() {
               {m.content}
             </article>
           ))}
-          {busy && <article aria-live="polite" style={{ opacity: .65 }}>Hermes is thinking…</article>}
+          {busy && <article aria-live="polite" style={{ opacity: .65 }}>Hermes is executing…</article>}
         </div>
       </section>
 
-      <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
-        <button type="button" onClick={() => runRevenue()} disabled={busy || !sessionReady} style={{ minHeight: 48, border: 0, borderRadius: 12, padding: "0 18px", fontWeight: 800 }}>
-          {busy ? "Running…" : "▶ Run revenue engine"}
-        </button>
-      </div>
-
-      <form onSubmit={send} style={{ display: "flex", gap: 10, marginTop: 12 }}>
-        <input aria-label="Message Hermes" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask Hermes…" disabled={busy} style={{ flex: 1, minWidth: 0, minHeight: 48, borderRadius: 12, border: "1px solid rgba(127,127,127,.35)", padding: "0 14px", fontSize: 16 }} />
-        <button type="submit" disabled={busy || !input.trim()} style={{ minWidth: 88, border: 0, borderRadius: 12, padding: "0 18px", fontWeight: 700 }}>
-          Send
+      <form onSubmit={run} style={{ display: "flex", gap: 10, marginTop: 12 }}>
+        <input aria-label="Command Hermes" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Tell Hermes what you want done…" disabled={busy || !sessionReady} style={{ flex: 1, minWidth: 0, minHeight: 48, borderRadius: 12, border: "1px solid rgba(127,127,127,.35)", padding: "0 14px", fontSize: 16 }} />
+        <button type="submit" disabled={busy || !sessionReady || !input.trim()} style={{ minWidth: 88, border: 0, borderRadius: 12, padding: "0 18px", fontWeight: 800 }}>
+          {busy ? "Running…" : "Run"}
         </button>
       </form>
 
       <p style={{ marginTop: 12, fontSize: 12, opacity: .6 }}>
-        Hermes commands remain server-authorized. This interface does not expose service keys or enable live trading.
+        Hermes is the operating layer. Consequential financial transfers, live trading, contracts, and similar high-impact actions remain approval-gated.
       </p>
     </main>
   );

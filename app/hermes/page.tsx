@@ -49,7 +49,7 @@ export default function HermesPage() {
     const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin + "/hermes" },
+      options: { emailRedirectTo: window.location.origin + "/auth/callback?next=/hermes" },
     });
     setAuthMessage(error ? error.message : "Check your email for the secure Hermes sign-in link.");
   }

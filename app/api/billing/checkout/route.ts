@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   try { checkoutRequest = await parseCheckoutRequest(request); }
   catch { return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 }); }
 
-  if (typeof checkoutRequest.stream === "string" && !Object.hasOwn(incomeStreamCatalog, checkoutRequest.stream)) {
+  if (checkoutRequest.stream !== undefined && (typeof checkoutRequest.stream !== "string" || !Object.hasOwn(incomeStreamCatalog, checkoutRequest.stream))) {
     return NextResponse.json({ error: "The selected income stream is not supported." }, { status: 400 });
   }
   const stream = resolveIncomeStream(checkoutRequest.stream);

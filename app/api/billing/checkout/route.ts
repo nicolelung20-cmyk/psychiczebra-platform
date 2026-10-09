@@ -65,6 +65,7 @@ export async function POST(request: Request) {
     };
     const parameters = new URLSearchParams({
       mode,
+      ...(mode === "payment" ? { customer_creation: "always" } : {}),
       "line_items[0][price]": product.stripe_price_id,
       "line_items[0][quantity]": "1",
       success_url: `${appUrl}/?checkout=success&stream=${stream}`,

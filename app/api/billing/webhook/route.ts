@@ -149,22 +149,7 @@ export async function POST(request: Request) {
         }
       }
 
-      if (session.subscription && customerId) {
-        const { error } = await supabase.from("subscriptions").upsert(
-          {
-            customer_id: customerId,
-            stripe_subscription_id: session.subscription,
-            status: "active",
-            plan: session.metadata?.income_stream ?? null,
-            amount: session.amount_total == null ? null : session.amount_total / 100,
-            currency: session.currency ?? "usd",
-          },
-          { onConflict: "stripe_subscription_id" },
-        );
-        if (error) throw error;
-      }
-
-      const productId = session.metadata?.product_id;
+      // Subscription lifecycle events own the authoritative status; Checkout must not overwrite trialing/canceled states.\n\n      const productId = session.metadata?.product_id;
       if (customerId && productId) {
         const { data: existingJob, error: jobLookupError } = await supabase.from("fulfillment_jobs")
           .select("id").eq("customer_id", customerId).eq("product_id", productId)

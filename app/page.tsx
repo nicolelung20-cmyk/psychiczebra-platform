@@ -58,6 +58,9 @@ export default function Home() {
             <a className="button button-primary" href="/hermes">
               Launch Live Hermes <span aria-hidden="true">→</span>
             </a>
+            <a className="text-link" href="/free-check">
+              Try the free Revenue Leak Check
+            </a>
             <a className="text-link" href="#engagements">
               See implementation packages
             </a>

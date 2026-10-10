@@ -49,6 +49,8 @@ export default function CommandPage() {
   }
 
   useEffect(() => {
+    // This effect starts an async polling loop; state updates occur after network responses.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
     const timer = window.setInterval(() => void load(), 5000);
     return () => window.clearInterval(timer);

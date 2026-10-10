@@ -18,6 +18,8 @@ type CheckoutSession = {
   amount_total?: number | null;
   currency?: string | null;
   payment_status?: string;
+  payment_link?: string | null;
+  payment_intent?: string | { id?: string } | null;
   customer?: string | null;
   subscription?: string | null;
   metadata?: Record<string, string>;
@@ -74,6 +76,31 @@ export async function POST(request: Request) {
       const session = object as CheckoutSession;
       // Checkout can complete before an asynchronous payment settles.
       if (session.payment_status !== "paid" || !session.id) return json({ received: true, skipped: "payment_not_paid" });
+
+      // One-time Workflow Brief Kit orders use the existing minimal revenue ledger.
+      // Do this before subscription/customer reconciliation: Payment Links may not
+      // create a Stripe Customer, and delivery must depend on a confirmed payment.
+      if (session.payment_link === "plink_1UGfrw0t6SDBlU8gNn6N5MwR" ||
+          session.metadata?.product_sku === "workflow-brief-kit") {
+        if (session.mode !== "payment" || session.amount_total !== 4700 || session.currency !== "usd") {
+          throw new Error("Workflow Brief Kit checkout does not match the expected one-time USD price.");
+        }
+        const paymentIntentId = typeof session.payment_intent === "string"
+          ? session.payment_intent
+          : session.payment_intent?.id ?? null;
+        const { error } = await supabase.from("revenue_transactions").upsert({
+          stripe_session_id: session.id,
+          stripe_payment_intent_id: paymentIntentId,
+          email: session.customer_details?.email ?? null,
+          product: "Elevat Workflow Brief Kit",
+          amount_cents: session.amount_total,
+          currency: "usd",
+          status: "paid",
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "stripe_session_id" });
+        if (error) throw error;
+        return json({ received: true, payment_confirmed: true, product: "workflow-brief-kit" });
+      }
 
       const stripeCustomerId = session.customer ?? null;
       const email = session.customer_details?.email ?? null;

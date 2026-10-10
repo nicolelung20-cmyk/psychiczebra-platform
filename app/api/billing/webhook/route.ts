@@ -72,8 +72,7 @@ export async function POST(request: Request) {
 
     if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       const session = object as CheckoutSession;
-      // completed may mean the customer finished Checkout while an async payment
-      // is still processing. Do not recognize revenue or fulfill until paid.
+      // Checkout can complete before an asynchronous payment settles.
       if (session.payment_status !== "paid" || !session.id) return json({ received: true, skipped: "payment_not_paid" });
 
       const stripeCustomerId = session.customer ?? null;
@@ -114,9 +113,8 @@ export async function POST(request: Request) {
         .maybeSingle();
       if (revenueError && revenueError.code !== "23505") throw revenueError;
 
-      // A retry or a second Stripe event for the same Checkout Session may hit
-      // the event-ID or session-ID unique index. Resolve the existing event so
-      // fulfillment can safely recover after a partial prior attempt.
+      // Recover the existing event when Stripe retries or emits a second event
+      // for the same Checkout Session, including after a partial prior attempt.
       let revenueEventId = revenueEvent?.id ?? null;
       if (!revenueEventId) {
         const { data: existing, error } = await supabase
@@ -138,7 +136,7 @@ export async function POST(request: Request) {
         if (productError) throw productError;
         if (!product) throw new Error("No active revenue_products row matches the Stripe product in Checkout metadata.");
 
-        const { error } = await supabase.from("fulfillment_jobs").upsert({
+        const { error } = await supabase.from("fulfillment_jobs").insert({
           customer_id: customer.id,
           revenue_event_id: revenueEventId,
           product_id: product.id,
@@ -146,22 +144,9 @@ export async function POST(request: Request) {
           delivery_channel: "email",
           delivery_target: email,
           metadata: { checkout_session_id: session.id, stripe_event_id: stripeEventId },
-        }, { onConflict: "metadata->>checkout_session_id,product_id", ignoreDuplicates: true });
-        // PostgREST may not accept an expression index as an onConflict target.
-        // If it does not, recover with the unique-index conflict code below.
-        if (error && error.code !== "23505" && error.code !== "42P10") throw error;
-        if (error?.code === "42P10") {
-          const { error: insertError } = await supabase.from("fulfillment_jobs").insert({
-            customer_id: customer.id,
-            revenue_event_id: revenueEventId,
-            product_id: product.id,
-            status: "pending",
-            delivery_channel: "email",
-            delivery_target: email,
-            metadata: { checkout_session_id: session.id, stripe_event_id: stripeEventId },
-          });
-          if (insertError && insertError.code !== "23505") throw insertError;
-        }
+        });
+        // A unique index on (Checkout Session ID, product UUID) makes retries safe.
+        if (error && error.code !== "23505") throw error;
       }
 
       if (session.metadata?.user_id && session.metadata?.income_stream === "elevat-pro" && session.mode === "subscription") {

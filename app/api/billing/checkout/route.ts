@@ -14,7 +14,7 @@ async function parseCheckoutRequest(request: Request): Promise<CheckoutRequest> 
 }
 
 export async function POST(request: Request) {
-  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\\s+/, "");
+  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/, "");
   if (!accessToken) return NextResponse.json({ error: "Please sign in to upgrade." }, { status: 401 });
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -38,8 +38,8 @@ export async function POST(request: Request) {
     const { data: auth, error } = await supabase.auth.getUser();
     if (error || !auth.user?.email) return NextResponse.json({ error: "Your session has expired. Sign in again." }, { status: 401 });
 
-    // Include the Stripe product/price identifiers so the signed webhook can map
-    // a paid checkout to the internal revenue_products row for fulfillment.
+    // Stripe IDs travel in signed Checkout metadata; the webhook maps the
+    // Stripe product ID to the internal revenue_products UUID before fulfillment.
     const metadata = {
       user_id: auth.user.id,
       income_stream: stream,
@@ -56,8 +56,7 @@ export async function POST(request: Request) {
       cancel_url: `${appUrl}/?billing=cancelled&stream=${stream}`,
       customer_email: auth.user.email,
     };
-    // Ensure one-time payments create a Stripe Customer, giving the webhook a
-    // stable customer ID rather than silently leaving revenue unlinked.
+    // Stable customer IDs are required to reconcile one-time payments safely.
     if (mode === "payment") params.customer_creation = "always";
     for (const [key, value] of Object.entries(metadata)) {
       params[`metadata[${key}]`] = value;

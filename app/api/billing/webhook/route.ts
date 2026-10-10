@@ -91,7 +91,7 @@ export async function POST(request: Request) {
         customer_id: customer.id,
         stripe_event_id: stripeEventId,
         event_type: "checkout_completed",
-        amount: session.amount_total == null ? null : session.amount_total / 100,
+        amount: session.mode === "subscription" || session.amount_total == null ? null : session.amount_total / 100,
         currency: session.currency ?? "usd",
         occurred_at: new Date().toISOString(),
         metadata: {

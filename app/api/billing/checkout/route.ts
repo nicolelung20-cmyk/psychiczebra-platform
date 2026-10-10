@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { normalizeAttribution } from "@/lib/attribution";
 import { createUserClient } from "@/lib/supabase/server";
-import { resolveIncomeStream, resolvePriceId } from "@/lib/income-streams";
+import { incomeStreamCatalog, resolveIncomeStream, resolvePriceId } from "@/lib/income-streams";
 
 type CheckoutRequest = { attribution?: unknown; stream?: unknown };
 
@@ -14,7 +14,7 @@ async function parseCheckoutRequest(request: Request): Promise<CheckoutRequest> 
 }
 
 export async function POST(request: Request) {
-  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/, "");
+  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\\s+/, "");
   if (!accessToken) return NextResponse.json({ error: "Please sign in to upgrade." }, { status: 401 });
   const stripeKey = process.env.STRIPE_SECRET_KEY;
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
@@ -25,6 +25,7 @@ export async function POST(request: Request) {
   catch { return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 }); }
 
   const stream = resolveIncomeStream(checkoutRequest.stream);
+  const streamConfig = incomeStreamCatalog[stream];
   const priceId = resolvePriceId(stream);
   if (!priceId) return NextResponse.json({ error: "The selected income stream is not configured." }, { status: 503 });
 
@@ -37,25 +38,36 @@ export async function POST(request: Request) {
     const { data: auth, error } = await supabase.auth.getUser();
     if (error || !auth.user?.email) return NextResponse.json({ error: "Your session has expired. Sign in again." }, { status: 401 });
 
-    const metadata = { user_id: auth.user.id, income_stream: stream, ...attribution };
-    const mode = stream === "growth-audit" || stream === "sales-accelerator" ? "payment" : "subscription";
-    const parameters = new URLSearchParams({
+    // Include the Stripe product/price identifiers so the signed webhook can map
+    // a paid checkout to the internal revenue_products row for fulfillment.
+    const metadata = {
+      user_id: auth.user.id,
+      income_stream: stream,
+      product_id: streamConfig.product,
+      price_id: priceId,
+      ...attribution,
+    };
+    const mode = streamConfig.mode;
+    const params: Record<string, string> = {
       mode,
       "line_items[0][price]": priceId,
       "line_items[0][quantity]": "1",
       success_url: `${appUrl}/?checkout=success&stream=${stream}`,
       cancel_url: `${appUrl}/?billing=cancelled&stream=${stream}`,
       customer_email: auth.user.email,
-      ...Object.fromEntries(Object.entries(metadata).flatMap(([key, value]) => [
-        [`metadata[${key}]`, value],
-        ...(mode === "subscription" ? [[`subscription_data[metadata][${key}]`, value]] : []),
-      ])),
-    });
+    };
+    // Ensure one-time payments create a Stripe Customer, giving the webhook a
+    // stable customer ID rather than silently leaving revenue unlinked.
+    if (mode === "payment") params.customer_creation = "always";
+    for (const [key, value] of Object.entries(metadata)) {
+      params[`metadata[${key}]`] = value;
+      if (mode === "subscription") params[`subscription_data[metadata][${key}]`] = value;
+    }
 
     const stripeResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: { Authorization: `Bearer ${stripeKey}`, "Content-Type": "application/x-www-form-urlencoded" },
-      body: parameters,
+      body: new URLSearchParams(params),
     });
     const result = await stripeResponse.json() as { url?: string; error?: { message?: string } };
     if (!stripeResponse.ok || !result.url) {

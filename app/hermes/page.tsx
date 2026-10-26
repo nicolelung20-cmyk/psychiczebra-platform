@@ -54,6 +54,17 @@ export default function HermesPage() {
     setAuthMessage(error ? error.message : "Check your email for the secure Hermes sign-in link.");
   }
 
+  async function signInWithApple() {
+    setAuthMessage("");
+    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const redirectTo = new URL("/auth/callback?next=/hermes", window.location.origin).toString();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: { redirectTo, scopes: "email name" },
+    });
+    if (error) setAuthMessage(`Apple sign-in could not start: ${error.message}`);
+  }
+
   async function run(e?: FormEvent) {
     e?.preventDefault();
     const commandText = input.trim();
@@ -109,6 +120,10 @@ export default function HermesPage() {
       {!sessionReady && status === "Sign in required" && (
         <section aria-label="Hermes sign in" style={{ marginBottom: 14, padding: 16, border: "1px solid rgba(127,127,127,.25)", borderRadius: 14 }}>
           <strong>One secure sign-in to activate your owner session</strong>
+          <button type="button" onClick={signInWithApple} style={{ width: "100%", minHeight: 46, border: "1px solid #000", borderRadius: 10, background: "#000", color: "#fff", fontWeight: 700, cursor: "pointer" }}>
+             Continue with Apple
+          </button>
+          <p style={{ margin: "12px 0 0", fontSize: 12, opacity: .65, textAlign: "center" }}>or use a secure email link</p>
           <form onSubmit={signIn} style={{ display: "flex", gap: 10, marginTop: 10 }}>
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address" style={{ flex: 1, minWidth: 0, minHeight: 44, borderRadius: 10, border: "1px solid rgba(127,127,127,.35)", padding: "0 12px" }} />
             <button type="submit" style={{ border: 0, borderRadius: 10, padding: "0 14px", fontWeight: 700 }}>Activate</button>

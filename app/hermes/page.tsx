@@ -54,6 +54,17 @@ export default function HermesPage() {
     setAuthMessage(error ? error.message : "Check your email for the secure Hermes sign-in link.");
   }
 
+  async function signInWithApple() {
+    setAuthMessage("");
+    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const redirectTo = new URL("/auth/callback?next=/hermes", window.location.origin).toString();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "apple",
+      options: { redirectTo, scopes: "email name" },
+    });
+    if (error) setAuthMessage(`Apple sign-in could not start: ${error.message}`);
+  }
+
   async function run(e?: FormEvent) {
     e?.preventDefault();
     const commandText = input.trim();

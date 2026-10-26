@@ -1,9 +1,18 @@
 "use client";
 
+import { createBrowserClient } from "@supabase/ssr";
 import { FormEvent, useState } from "react";
-import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 const AUTH_CALLBACK = "/auth/callback?next=/hermes";
+
+function getSupabaseClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) throw new Error("Supabase is not configured.");
+  return createBrowserClient(url, key);
+}
 
 export function AuthPanel({ configured }: { configured: boolean }) {
   const [email, setEmail] = useState("");
@@ -15,7 +24,7 @@ export function AuthPanel({ configured }: { configured: boolean }) {
     setSending(true);
     setMessage("");
     try {
-      const { error } = await getSupabaseBrowserClient().auth.signInWithOtp({
+      const { error } = await getSupabaseClient().auth.signInWithOtp({
         email,
         options: { emailRedirectTo: window.location.origin + AUTH_CALLBACK },
       });
@@ -31,7 +40,7 @@ export function AuthPanel({ configured }: { configured: boolean }) {
     setSending(true);
     setMessage("");
     try {
-      const { error } = await getSupabaseBrowserClient().auth.signInWithOAuth({
+      const { error } = await getSupabaseClient().auth.signInWithOAuth({
         provider: "apple",
         options: { redirectTo: window.location.origin + AUTH_CALLBACK },
       });

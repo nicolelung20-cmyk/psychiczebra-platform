@@ -11,6 +11,12 @@ async function chat(url:string,headers:Record<string,string>,body:unknown,provid
   return {provider,model:p?.model||model,message:p?.choices?.[0]?.message?.content||"",usage:p?.usage||null};
 }
 
+
+async function grok(key:string,messages:unknown[]){
+ const model=process.env.GROK_MODEL||"grok-3";
+ return chat("https://api.x.ai/v1/chat/completions",{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},{model,messages,max_tokens:2000},"grok",model);
+}
+
 async function openRouter(key:string,messages:unknown[]){return chat("https://openrouter.ai/api/v1/chat/completions",{Authorization:`Bearer ${key}`,"Content-Type":"application/json","HTTP-Referer":process.env.NEXT_PUBLIC_APP_URL||"https://elevat-pearl.vercel.app","X-Title":"Elevat Hermes Command Center"},{model:"openrouter/free",messages,max_tokens:2000},"openrouter-free","openrouter/free");}
 
 async function groq(key:string,messages:unknown[]){return chat("https://api.groq.com/openai/v1/chat/completions",{Authorization:`Bearer ${key}`,"Content-Type":"application/json"},{model:"openai/gpt-oss-20b",messages,max_tokens:2000},"groq-free","openai/gpt-oss-20b");}
@@ -32,6 +38,11 @@ export async function POST(req:Request){
  if(!messages.length)return NextResponse.json({ok:false,error:"messages required"},{status:400});
  const errors:string[]=[];
  const routes=[
+  // Grok is the preferred brain only when explicitly enabled. This prevents
+  // accidental billable API use in a $0/default configuration.
+  ...(process.env.HERMES_ALLOW_PAID_GROK === "true" && process.env.GROK_API_KEY
+    ? [["grok",process.env.GROK_API_KEY,()=>grok(process.env.GROK_API_KEY!,messages)] as const]
+    : []),
   ["openrouter",process.env.OPENROUTER_API_KEY,()=>openRouter(process.env.OPENROUTER_API_KEY!,messages)],
   ["gemini",process.env.GEMINI_API_KEY,()=>gemini(process.env.GEMINI_API_KEY!,messages)],
   ["groq",process.env.GROQ_API_KEY,()=>groq(process.env.GROQ_API_KEY!,messages)],

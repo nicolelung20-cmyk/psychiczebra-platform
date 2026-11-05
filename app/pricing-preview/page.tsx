@@ -70,7 +70,10 @@ export default function PricingPreviewPage() {
       <section className={styles.grid} aria-label="Subscription plans">
         {plans.map((plan) => {
           const monthlyPrice = plan.monthly;
-          const displayedPrice = plan.custom ? "Custom" : money(annual ? monthlyPrice * 0.8 : monthlyPrice);
+          const displayedPrice =
+            plan.custom || monthlyPrice === undefined
+              ? "Custom"
+              : money(annual ? monthlyPrice * 0.8 : monthlyPrice);
           return (
             <article key={plan.name} className={`${styles.card} ${plan.featured ? styles.featured : ""}`}>
               <div className={styles.cardTop}>
@@ -83,7 +86,7 @@ export default function PricingPreviewPage() {
                 <span className={styles.price}>{displayedPrice}</span>
                 {!plan.custom && <span className={styles.period}>/ month{annual ? "*" : ""}</span>}
               </div>
-              {annual && !plan.custom && <p className={styles.annualTotal}>{money(monthlyPrice * 0.8 * 12)} billed annually</p>}
+              {annual && monthlyPrice !== undefined && !plan.custom && <p className={styles.annualTotal}>{money(monthlyPrice * 0.8 * 12)} billed annually</p>}
               {plan.custom && <p className={styles.annualTotal}>Scope and pricing tailored to your needs</p>}
               <div className={styles.rule} />
               <p className={styles.includes}>WHAT'S INCLUDED</p>

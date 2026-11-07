@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { WORKFLOW_BRIEF_KIT } from "@/lib/workflow-brief-kit";
+import { getStripeMode, getStripeSecretKey } from "@/lib/stripe-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ type StripeSession = {
   currency?: string | null;
   customer_details?: { email?: string | null; name?: string | null } | null;
   customer_email?: string | null;
+  livemode?: boolean;
 };
 
 type StripeLineItems = {
@@ -33,12 +35,21 @@ const fail = (message: string, status: number) => NextResponse.json({ error: mes
 
 export async function GET(request: Request) {
   const sessionId = new URL(request.url).searchParams.get("session_id");
-  if (!sessionId || !/^cs_live_[A-Za-z0-9]+$/.test(sessionId)) {
-    return fail("A valid live checkout session is required.", 400);
+  const stripeMode = getStripeMode();
+  const expectedPrefix = stripeMode === "test" ? "cs_test_" : "cs_live_";
+  if (!sessionId || !sessionId.startsWith(expectedPrefix) || !/^cs_(?:test|live)_[A-Za-z0-9]+$/.test(sessionId)) {
+    return fail("A checkout session for the configured Stripe mode is required.", 400);
   }
 
-  const secret = process.env.STRIPE_SECRET_KEY;
-  if (!secret) return fail("Secure delivery is temporarily unavailable. Contact support with your Stripe receipt.", 503);
+  const secret = getStripeSecretKey();
+  if (!secret) return fail("Secure delivery is not configured for this Stripe mode. Contact support with your receipt.", 503);
+  const paymentLinkId = stripeMode === "test"
+    ? process.env.STRIPE_WORKFLOW_BRIEF_KIT_PAYMENT_LINK_ID_TEST
+    : process.env.STRIPE_WORKFLOW_BRIEF_KIT_PAYMENT_LINK_ID ?? PAYMENT_LINK_ID;
+  const productId = stripeMode === "test"
+    ? process.env.STRIPE_WORKFLOW_BRIEF_KIT_PRODUCT_ID_TEST
+    : process.env.STRIPE_WORKFLOW_BRIEF_KIT_PRODUCT_ID ?? PRODUCT_ID;
+  if (!paymentLinkId || !productId) return fail("Workflow Brief Kit is not configured for this Stripe mode.", 503);
 
   try {
     const headers = { Authorization: `Bearer ${secret}` };
@@ -51,10 +62,11 @@ export async function GET(request: Request) {
     const session = await sessionResponse.json() as StripeSession;
     if (
       session.id !== sessionId ||
+      session.livemode !== (stripeMode === "live") ||
       session.status !== "complete" ||
       session.payment_status !== "paid" ||
       session.mode !== "payment" ||
-      session.payment_link !== PAYMENT_LINK_ID ||
+      session.payment_link !== paymentLinkId ||
       session.amount_total !== PRICE_CENTS ||
       session.currency !== "usd"
     ) {
@@ -71,12 +83,11 @@ export async function GET(request: Request) {
     const ownsKit = (items.data ?? []).some((item) => {
       const product = item.price?.product;
       const productId = typeof product === "string" ? product : product?.id;
-      return productId === PRODUCT_ID && item.price?.unit_amount === PRICE_CENTS;
+      return productId === productIdExpected && item.price?.unit_amount === PRICE_CENTS;
     });
     if (!ownsKit) return fail("This checkout does not include the Workflow Brief Kit.", 403);
 
-    // Best-effort idempotent fulfillment record. Delivery remains gated by Stripe's
-    // live session and line-item verification even if the database is temporarily unavailable.
+    // Delivery is not released until the server-only revenue ledger confirms the paid order.
     try {
       const supabase = createServiceClient();
       const paymentIntent = typeof session.payment_intent === "string"
@@ -92,9 +103,9 @@ export async function GET(request: Request) {
         status: "delivered",
         updated_at: new Date().toISOString(),
       }, { onConflict: "stripe_session_id" });
-      if (error) console.error("Verified kit delivery record failed.");
+      if (error) throw error;
     } catch {
-      console.error("Verified kit delivery record unavailable.");
+      return fail("Payment is verified, but delivery is paused until its revenue record is confirmed. Retry shortly.", 503);
     }
 
     return new Response(WORKFLOW_BRIEF_KIT, {

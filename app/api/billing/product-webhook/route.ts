@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { getStripeMode, getStripeWebhookSecret } from "@/lib/stripe-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,12 +37,14 @@ type CheckoutSession = {
   customer_email?: string | null;
 };
 
-type StripeEvent = { id?: string; type?: string; data?: { object?: CheckoutSession } };
+type StripeEvent = { id?: string; type?: string; livemode?: boolean; data?: { object?: CheckoutSession } };
 
 export async function POST(request: Request) {
-  const secret = process.env.STRIPE_PRODUCT_WEBHOOK_SECRET;
+  const stripeMode = getStripeMode();
+  const secret = getStripeWebhookSecret("product");
   const body = await request.text();
-  if (!secret || !isValidSignature(request.headers.get("stripe-signature"), body, secret)) {
+  if (!secret) return NextResponse.json({ error: "Product webhook signing secret is not configured for this mode." }, { status: 503 });
+  if (!isValidSignature(request.headers.get("stripe-signature"), body, secret)) {
     return NextResponse.json({ error: "Invalid webhook signature." }, { status: 400 });
   }
 
@@ -53,13 +56,21 @@ export async function POST(request: Request) {
   }
 
   if (!event.id || !event.type) return NextResponse.json({ error: "Invalid event envelope." }, { status: 400 });
+  if (event.livemode !== (stripeMode === "live")) return NextResponse.json({ error: "Stripe event mode does not match this deployment." }, { status: 400 });
+  const paymentLinkId = stripeMode === "test"
+    ? process.env.STRIPE_WORKFLOW_BRIEF_KIT_PAYMENT_LINK_ID_TEST
+    : process.env.STRIPE_WORKFLOW_BRIEF_KIT_PAYMENT_LINK_ID ?? PAYMENT_LINK_ID;
+  const productId = stripeMode === "test"
+    ? process.env.STRIPE_WORKFLOW_BRIEF_KIT_PRODUCT_ID_TEST
+    : process.env.STRIPE_WORKFLOW_BRIEF_KIT_PRODUCT_ID ?? PRODUCT_ID;
+  if (!paymentLinkId || !productId) return NextResponse.json({ error: "Workflow Brief Kit is not configured for this Stripe mode." }, { status: 503 });
   if (!["checkout.session.completed", "checkout.session.async_payment_succeeded"].includes(event.type)) {
     return NextResponse.json({ received: true, ignored: true });
   }
 
   const session = event.data?.object;
   if (!session?.id) return NextResponse.json({ error: "Missing Checkout Session." }, { status: 400 });
-  if (session.payment_link !== PAYMENT_LINK_ID && session.metadata?.product_sku !== "workflow-brief-kit") {
+  if (session.payment_link !== paymentLinkId && session.metadata?.product_sku !== "workflow-brief-kit") {
     return NextResponse.json({ received: true, ignored: true });
   }
   if (session.payment_status !== "paid") {
@@ -70,7 +81,7 @@ export async function POST(request: Request) {
     session.mode !== "payment" ||
     session.amount_total !== PRICE_CENTS ||
     session.currency !== "usd" ||
-    (session.metadata?.product_id && session.metadata.product_id !== PRODUCT_ID)
+    (session.metadata?.product_id && session.metadata.product_id !== productId)
   ) {
     return NextResponse.json({ error: "Paid session does not match the expected product and price." }, { status: 400 });
   }

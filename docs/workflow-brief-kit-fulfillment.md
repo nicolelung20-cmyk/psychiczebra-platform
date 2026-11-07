@@ -1,6 +1,14 @@
 # Workflow Brief Kit payment and delivery
 
-## Environment isolation\n\n- Preview and local deployments default to Stripe test mode. Configure `STRIPE_SECRET_KEY_TEST`, `STRIPE_WEBHOOK_SECRET_TEST`, and the test product webhook secret independently.\n- Production defaults to live mode. It uses only the existing live variables and the separately created live product-webhook signing secret.\n- A test-mode checkout requires test-specific product, price, and payment-link IDs. The application intentionally fails closed rather than falling back to live identifiers or credentials.\n- Stripe event `livemode` and Checkout Session `livemode` must match the deployment mode.\n- Delivery requires a successful server-only `revenue_transactions` write before the download response is released.\n\n## Production contract
+## Environment isolation
+
+- Preview and local deployments default to Stripe test mode. Configure `STRIPE_SECRET_KEY_TEST`, `STRIPE_WEBHOOK_SECRET_TEST`, and the test product webhook secret independently.
+- Production defaults to live mode. It uses only the existing live variables and the separately created live product-webhook signing secret.
+- A test-mode checkout requires test-specific product, price, and payment-link IDs. The application intentionally fails closed rather than falling back to live identifiers or credentials.
+- Stripe event `livemode` and Checkout Session `livemode` must match the deployment mode.
+- Delivery requires a successful server-only `revenue_transactions` write before the download response is released.
+
+## Production contract
 
 - Product: Elevat Workflow Brief Kit
 - Price: USD 47.00 one-time
@@ -23,6 +31,7 @@
 
 - `STRIPE_SECRET_KEY`: existing server-only live Stripe secret used to retrieve the Checkout Session and line items.
 - `SUPABASE_SERVICE_ROLE_KEY`: existing server-only service key used for revenue reconciliation.
-- `STRIPE_PRODUCT_WEBHOOK_SECRET`: encrypted Vercel environment variable for the dedicated live Stripe endpoint.\n- Preview-only test configuration: `STRIPE_SECRET_KEY_TEST`, `STRIPE_WEBHOOK_SECRET_TEST`, `STRIPE_PRODUCT_WEBHOOK_SECRET_TEST`, `STRIPE_WORKFLOW_BRIEF_KIT_PAYMENT_LINK_ID_TEST`, and `STRIPE_WORKFLOW_BRIEF_KIT_PRODUCT_ID_TEST`.
+- `STRIPE_PRODUCT_WEBHOOK_SECRET`: encrypted Vercel environment variable for the dedicated live Stripe endpoint.
+- Preview-only test configuration: `STRIPE_SECRET_KEY_TEST`, `STRIPE_WEBHOOK_SECRET_TEST`, `STRIPE_PRODUCT_WEBHOOK_SECRET_TEST`, `STRIPE_WORKFLOW_BRIEF_KIT_PAYMENT_LINK_ID_TEST`, and `STRIPE_WORKFLOW_BRIEF_KIT_PRODUCT_ID_TEST`.
 
 Never expose these variables through `NEXT_PUBLIC_*`, browser code, or Git. No live test charge was created. Validate the full flow using Stripe test mode before making any additional changes to the live checkout.

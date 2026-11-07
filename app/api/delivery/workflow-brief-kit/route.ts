@@ -82,8 +82,8 @@ export async function GET(request: Request) {
     const items = await itemsResponse.json() as StripeLineItems;
     const ownsKit = (items.data ?? []).some((item) => {
       const product = item.price?.product;
-      const productId = typeof product === "string" ? product : product?.id;
-      return productId === productIdExpected && item.price?.unit_amount === PRICE_CENTS;
+      const lineItemProductId = typeof product === "string" ? product : product?.id;
+      return lineItemProductId === productId && item.price?.unit_amount === PRICE_CENTS;
     });
     if (!ownsKit) return fail("This checkout does not include the Workflow Brief Kit.", 403);
 

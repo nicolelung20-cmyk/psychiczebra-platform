@@ -15,7 +15,7 @@ async function parseCheckoutRequest(request: Request): Promise<CheckoutRequest> 
 }
 
 export async function POST(request: Request) {
-  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\\s+/, "");
+  const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/, "");
   if (!accessToken) return NextResponse.json({ error: "Please sign in to upgrade." }, { status: 401 });
   const stripeMode = getStripeMode();
   const stripeKey = getStripeSecretKey();

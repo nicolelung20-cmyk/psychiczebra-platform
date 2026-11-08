@@ -4,13 +4,35 @@ import { FormEvent, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 
 type Message = { role: "user" | "assistant"; content: string };
+type JobSnapshot = {
+  id: string;
+  status: string;
+  output?: { text?: string; message?: string; provider?: string; model?: string } | null;
+  error?: string | null;
+};
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!;
+
+async function waitForJob(jobId: string, accessToken: string, maxWaitMs = 30_000): Promise<JobSnapshot | null> {
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    const response = await fetch("/api/command", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: "no-store",
+    });
+    if (!response.ok) return null;
+    const snapshot = await response.json();
+    const job = (snapshot.jobs ?? []).find((item: JobSnapshot) => item.id === jobId) as JobSnapshot | undefined;
+    if (job && (job.status === "succeeded" || job.status === "failed")) return job;
+    await new Promise((resolve) => window.setTimeout(resolve, 2000));
+  }
+  return null;
+}
 
 export default function HermesPage() {
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Hermes is online. Tell me what you want done. I’ll plan it, route it, execute through the available worker pipeline, and report the result." },
+    { role: "assistant", content: "Hermes is online. Tell me what you want done. I’ll plan it, route it, execute through the available worker pipeline, and report the verified result." },
   ]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
@@ -20,7 +42,7 @@ export default function HermesPage() {
   const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
-    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_KEY);
     let mounted = true;
     supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
@@ -33,11 +55,12 @@ export default function HermesPage() {
       try {
         const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-gateway`, {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
+          cache: "no-store",
         });
         const j = await r.json();
-        setStatus(r.ok && j?.status === "active" ? "Online" : "Degraded");
+        setStatus(r.ok && j?.status === "active" ? "Gateway connected" : "Gateway degraded");
       } catch {
-        setStatus("Offline");
+        setStatus("Gateway unavailable");
       }
     });
     return () => { mounted = false; };
@@ -46,7 +69,7 @@ export default function HermesPage() {
   async function signIn(e: FormEvent) {
     e.preventDefault();
     setAuthMessage("");
-    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_KEY);
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: window.location.origin + "/auth/callback?next=/hermes" },
@@ -62,7 +85,7 @@ export default function HermesPage() {
     setMessages((m) => [...m, { role: "user", content: commandText }]);
     setBusy(true);
     try {
-      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_KEY);
       const { data } = await supabase.auth.getSession();
       if (!data.session) throw new Error("Secure Hermes session required.");
       const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-gateway`, {
@@ -78,16 +101,32 @@ export default function HermesPage() {
       });
       const j = await r.json();
       if (!r.ok || !j.ok) throw new Error(j?.detail || j?.error || "Hermes execution failed");
-      setMessages((m) => [
-        ...m,
-        {
+
+      if (!j.job_id) {
+        setMessages((m) => [...m, { role: "assistant", content: j.message || "Hermes returned no job identifier; no completion is being assumed." }]);
+        setStatus("Accepted");
+        return;
+      }
+
+      setStatus("Queued · checking shared ledger");
+      const job = await waitForJob(j.job_id, data.session.access_token);
+      if (job?.status === "succeeded") {
+        const output = job.output?.text ?? job.output?.message ?? JSON.stringify(job.output ?? {});
+        setMessages((m) => [...m, { role: "assistant", content: output || "The worker marked the job successful but returned no text output." }]);
+        setStatus("Verified complete");
+      } else if (job?.status === "failed") {
+        setMessages((m) => [...m, { role: "assistant", content: `Job failed: ${job.error || "No error detail was recorded."}` }]);
+        setStatus("Failed");
+      } else {
+        setMessages((m) => [...m, {
           role: "assistant",
-          content: j.message || `Queued for Hermes execution. Job ${j.job_id ?? "created"}.`,
-        },
-      ]);
-      setStatus("Running");
+          content: `Job ${j.job_id} was accepted and is still queued or running. The shared worker has not recorded a verified completion yet.`,
+        }]);
+        setStatus("Awaiting worker");
+      }
     } catch (err) {
       setMessages((m) => [...m, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}` }]);
+      setStatus("Degraded");
     } finally {
       setBusy(false);
     }
@@ -99,7 +138,7 @@ export default function HermesPage() {
         <div>
           <p style={{ margin: 0, opacity: .65, fontSize: 13 }}>ELEVAT AI</p>
           <h1 style={{ margin: "4px 0", fontSize: 30 }}>Hermes</h1>
-          <p style={{ margin: 0, opacity: .7 }}>Owner command center</p>
+          <p style={{ margin: 0, opacity: .7 }}>Owner command center · shared job ledger</p>
         </div>
         <span aria-live="polite" style={{ padding: "8px 12px", border: "1px solid currentColor", borderRadius: 999, fontSize: 13 }}>
           ● {status}
@@ -124,19 +163,19 @@ export default function HermesPage() {
               {m.content}
             </article>
           ))}
-          {busy && <article aria-live="polite" style={{ opacity: .65 }}>Hermes is executing…</article>}
+          {busy && <article aria-live="polite" style={{ opacity: .65 }}>Hermes is checking the shared job ledger…</article>}
         </div>
       </section>
 
       <form onSubmit={run} style={{ display: "flex", gap: 10, marginTop: 12 }}>
         <input aria-label="Command Hermes" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Tell Hermes what you want done…" disabled={busy || !sessionReady} style={{ flex: 1, minWidth: 0, minHeight: 48, borderRadius: 12, border: "1px solid rgba(127,127,127,.35)", padding: "0 14px", fontSize: 16 }} />
         <button type="submit" disabled={busy || !sessionReady || !input.trim()} style={{ minWidth: 88, border: 0, borderRadius: 12, padding: "0 18px", fontWeight: 800 }}>
-          {busy ? "Running…" : "Run"}
+          {busy ? "Checking…" : "Run"}
         </button>
       </form>
 
       <p style={{ marginTop: 12, fontSize: 12, opacity: .6 }}>
-        Hermes is the operating layer. Consequential financial transfers, live trading, contracts, and similar high-impact actions remain approval-gated.
+        Commands are confirmed against the shared job ledger. Consequential financial transfers, live trading, contracts, and similar high-impact actions remain approval-gated.
       </p>
     </main>
   );

@@ -31,6 +31,10 @@ The console requires a valid Supabase user session before it runs. Its supported
 
 The uploaded `skills-codex-sync-astra-openai-docs.zip` identifies itself as deprecated. It must not be bulk-installed or treated as the current source of truth. Codex Agent Skills are not automatically Hermes runtime plugins. Review individual skills, refresh them from current official sources, and register only compatible, approved entries in `command_skills`. The dashboard reads that registry rather than assuming that a skill is installed because its archive exists.
 
+## Owner-scoped data access
+
+The server API verifies the Supabase user token before accessing the service-role client. Job history is filtered by `owner_id`; pending approvals are filtered by `requested_by`; audit rows are filtered by `details.ownerId`. The dashboard exposes only the connection names, kinds, and statuses—not stored connection endpoints or metadata. The server-side service key is never sent to the browser.
+
 ## Runtime separation
 
 The `hermes-webui` Vercel project is not the primary execution host. Its recent runtime errors include repeated 300-second `/python` timeouts and a failed restart because the `hermes` executable was not present in the serverless runtime. Keep the full Hermes agent on its private host (the Mac/Tailscale path) and use Vercel for the existing application/control-panel surface.

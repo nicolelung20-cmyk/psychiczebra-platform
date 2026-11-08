@@ -18,7 +18,7 @@ type Project = { id: string; name: string; source: string | null; url: string | 
 type Job = { id: string; status: string; priority: number; input: { command?: string; routedAgent?: string }; created_at: string };
 type Approval = { id: string; action: string; target: string | null; created_at: string };
 type Skill = { id: string; name: string; source: string | null; enabled: boolean; metadata: unknown };
-type Connection = { id: string; name: string; kind: string; endpoint: string | null; status: string; metadata: unknown };
+type Connection = { id: string; name: string; kind: string; status: string };
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!;
@@ -35,7 +35,7 @@ export default function CommandPage() {
   const [status, setStatus] = useState("Connecting");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [signals, setSignals] = useState<any[]>([]);
+  const [audit, setAudit] = useState<any[]>([]);
 
   async function load() {
     const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_KEY);
@@ -59,7 +59,7 @@ export default function CommandPage() {
     setApprovals(payload.approvals ?? []);
     setSkills(payload.skills ?? []);
     setConnections(payload.connections ?? []);
-    setSignals((payload.audit ?? []).filter((item: any) => String(item.event_type).startsWith("tiktok.")).slice(0, 12));
+    setAudit(payload.audit ?? []);
     setStatus("Live");
     setError("");
   }
@@ -101,7 +101,7 @@ export default function CommandPage() {
     }
   }
 
-  const liveAgents = agents.filter((agent) => agent.heartbeatFresh === true).length;
+  const liveAgents = agents.filter((agent) => agent.heartbeatFresh === true && agent.heartbeatStatus === "active").length;
 
   return (
     <main className={styles.shell}>
@@ -136,8 +136,8 @@ export default function CommandPage() {
           <div className={styles.list}>
             {agents.map(agent => (
               <div className={styles.row} key={agent.id}>
-                <span><i className={agent.heartbeatFresh ? styles.dot : styles.dotMuted} />{agent.name}</span>
-                <small>{agent.heartbeatFresh ? "live" : "stale"} · {agent.provider ?? "native"}</small>
+                <span><i className={agent.heartbeatFresh && agent.heartbeatStatus === "active" ? styles.dot : styles.dotMuted} />{agent.name}</span>
+                <small>{agent.heartbeatFresh ? (agent.heartbeatStatus ?? "unknown") : "stale"} · {agent.provider ?? "native"}</small>
               </div>
             ))}
           </div>
@@ -173,13 +173,13 @@ export default function CommandPage() {
       </section>
 
       <section className={styles.card}>
-        <div className={styles.cardTitle}><span>Live signals</span><b>TikTok LIVE</b></div>
-        {signals.length === 0 ? <p className={styles.empty}>No TikTok LIVE events received yet.</p> : (
+        <div className={styles.cardTitle}><span>Recent activity</span><b>{audit.length} events</b></div>
+        {audit.length === 0 ? <p className={styles.empty}>No owner-scoped audit events have been recorded yet.</p> : (
           <div className={styles.list}>
-            {signals.map(item => (
+            {audit.slice(0, 12).map(item => (
               <div className={styles.row} key={item.id}>
-                <span><i className={styles.dot} />{String(item.event_type).replace("tiktok.", "")} · {item.actor}</span>
-                <small>{new Date(item.created_at).toLocaleTimeString()}</small>
+                <span>{item.event_type} · {item.action ?? item.target ?? "System event"}</span>
+                <small>{item.status ?? item.actor} · {new Date(item.created_at).toLocaleTimeString()}</small>
               </div>
             ))}
           </div>
@@ -224,7 +224,7 @@ export default function CommandPage() {
               {connections.map(connection => (
                 <div className={styles.row} key={connection.id}>
                   <span>{connection.name}</span>
-                  <small title={connection.endpoint ?? undefined}>{connection.status} · {connection.kind}</small>
+                  <small>{connection.status} · {connection.kind}</small>
                 </div>
               ))}
             </div>

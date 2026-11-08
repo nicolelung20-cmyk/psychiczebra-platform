@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   let approval = null;
   if (routing.approvalRequired) {
     const { data, error } = await supabase.from("command_approvals").insert({
-      action: command, target: routing.agent, requested_by: "user", status: "pending",
+      action: command, target: routing.agent, requested_by: user.id, status: "pending",
       details: { jobId: job.id, ownerId: user.id },
     }).select("id,action,target,status,created_at").single();
     if (error) return NextResponse.json({ error: "Command queued but approval creation failed.", job }, { status: 503 });
@@ -70,13 +70,13 @@ export async function GET(request: Request) {
 
   const supabase = createServiceClient();
   const [agents, projects, jobs, approvals, audit, skills, connections, heartbeats] = await Promise.all([
-    supabase.from("command_agents").select("id,name,provider,endpoint,status,capabilities").order("name"),
+    supabase.from("command_agents").select("id,name,provider,status,capabilities").order("name"),
     supabase.from("command_projects").select("id,name,source,url,status,metadata,updated_at").order("name"),
     supabase.from("agent_jobs").select("id,job_type,status,priority,input,output,error,started_at,finished_at,created_at,attempts,max_attempts").eq("owner_id", user.id).order("created_at", { ascending: false }).limit(25),
-    supabase.from("command_approvals").select("id,action,target,requested_by,status,details,created_at,resolved_at").eq("status", "pending").order("created_at", { ascending: false }).limit(25),
-    supabase.from("command_audit").select("id,event_type,actor,action,status,target,details,created_at").order("created_at", { ascending: false }).limit(25),
+    supabase.from("command_approvals").select("id,action,target,created_at").eq("status", "pending").eq("requested_by", user.id).order("created_at", { ascending: false }).limit(25),
+    supabase.from("command_audit").select("id,event_type,actor,action,status,target,details,created_at").filter("details->>ownerId", "eq", user.id).order("created_at", { ascending: false }).limit(25),
     supabase.from("command_skills").select("id,name,source,enabled,metadata,created_at").order("name"),
-    supabase.from("command_connections").select("id,name,kind,endpoint,status,metadata,created_at,updated_at").order("name"),
+    supabase.from("command_connections").select("id,name,kind,status").order("name"),
     supabase.from("command_agent_heartbeats").select("agent_id,status,checked_at,latency_ms").order("checked_at", { ascending: false }).limit(100),
   ]);
 

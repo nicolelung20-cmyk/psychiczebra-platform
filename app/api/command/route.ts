@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient, createUserClient } from "@/lib/supabase/server";
 import { routeCommand } from "@/src/command-router";
+import { attachHeartbeatStatus } from "@/src/command-snapshot";
 
 export const dynamic = "force-dynamic";
 
@@ -68,15 +69,19 @@ export async function GET(request: Request) {
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const supabase = createServiceClient();
-  const [agents, projects, jobs, approvals, audit] = await Promise.all([
-    supabase.from("command_agents").select("id,name,provider,endpoint,status,capabilities,updated_at").order("name"),
+  const [agents, projects, jobs, approvals, audit, skills, connections, heartbeats] = await Promise.all([
+    supabase.from("command_agents").select("id,name,provider,endpoint,status,capabilities").order("name"),
     supabase.from("command_projects").select("id,name,source,url,status,metadata,updated_at").order("name"),
     supabase.from("agent_jobs").select("id,job_type,status,priority,input,output,error,started_at,finished_at,created_at,attempts,max_attempts").eq("owner_id", user.id).order("created_at", { ascending: false }).limit(25),
     supabase.from("command_approvals").select("id,action,target,requested_by,status,details,created_at,resolved_at").eq("status", "pending").order("created_at", { ascending: false }).limit(25),
     supabase.from("command_audit").select("id,event_type,actor,action,status,target,details,created_at").order("created_at", { ascending: false }).limit(25),
+    supabase.from("command_skills").select("id,name,source,enabled,metadata,created_at").order("name"),
+    supabase.from("command_connections").select("id,name,kind,endpoint,status,metadata,created_at,updated_at").order("name"),
+    supabase.from("command_agent_heartbeats").select("agent_id,status,checked_at,latency_ms").order("checked_at", { ascending: false }).limit(100),
   ]);
 
-  const firstError = [agents, projects, jobs, approvals, audit].find((result) => result.error)?.error;
+  const firstError = [agents, projects, jobs, approvals, audit, skills, connections, heartbeats]
+    .find((result) => result.error)?.error;
   if (firstError) {
     console.error("Command snapshot failed:", firstError);
     return NextResponse.json({ error: "Command backend unavailable." }, { status: 503 });
@@ -85,12 +90,13 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ok: true,
     user: { id: user.id, email: user.email ?? null },
-    agents: agents.data ?? [],
+    agents: attachHeartbeatStatus(agents.data ?? [], heartbeats.data ?? []),
     projects: projects.data ?? [],
     jobs: jobs.data ?? [],
     approvals: approvals.data ?? [],
     audit: audit.data ?? [],
+    skills: skills.data ?? [],
+    connections: connections.data ?? [],
     generatedAt: new Date().toISOString(),
   });
 }
-

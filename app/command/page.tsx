@@ -4,13 +4,25 @@ import { FormEvent, useEffect, useState } from "react";
 import { createBrowserClient } from "@supabase/ssr";
 import styles from "./command.module.css";
 
-type Agent = { id: string; name: string; provider: string | null; status: string; capabilities: unknown };
+type Agent = {
+  id: string;
+  name: string;
+  provider: string | null;
+  status: string;
+  capabilities: unknown;
+  heartbeatFresh?: boolean;
+  heartbeatStatus?: string | null;
+  lastHeartbeatAt?: string | null;
+};
 type Project = { id: string; name: string; source: string | null; url: string | null; status: string };
 type Job = { id: string; status: string; priority: number; input: { command?: string; routedAgent?: string }; created_at: string };
 type Approval = { id: string; action: string; target: string | null; created_at: string };
+type Skill = { id: string; name: string; source: string | null; enabled: boolean; metadata: unknown };
+type Connection = { id: string; name: string; kind: string; endpoint: string | null; status: string; metadata: unknown };
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SUPABASE_KEY = (process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)!;
+const VERIFICATION_URL = `${SUPABASE_URL}/functions/v1/hermes-verify`;
 
 export default function CommandPage() {
   const [command, setCommand] = useState("");
@@ -18,6 +30,8 @@ export default function CommandPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
   const [status, setStatus] = useState("Connecting");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -43,6 +57,8 @@ export default function CommandPage() {
     setProjects(payload.projects ?? []);
     setJobs(payload.jobs ?? []);
     setApprovals(payload.approvals ?? []);
+    setSkills(payload.skills ?? []);
+    setConnections(payload.connections ?? []);
     setSignals((payload.audit ?? []).filter((item: any) => String(item.event_type).startsWith("tiktok.")).slice(0, 12));
     setStatus("Live");
     setError("");
@@ -85,6 +101,8 @@ export default function CommandPage() {
     }
   }
 
+  const liveAgents = agents.filter((agent) => agent.heartbeatFresh === true).length;
+
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
@@ -109,17 +127,17 @@ export default function CommandPage() {
           <button disabled={busy || !command.trim()}>{busy ? "Routing…" : "Run command"}</button>
         </form>
         {error && <p className={styles.error}>{error}</p>}
-        <p className={styles.note}>Commands route through the supervisor. Live trading and other high-impact actions remain approval-gated.</p>
+        <p className={styles.note}>Commands route through the shared supervisor. Live trading and other high-impact actions remain approval-gated.</p>
       </section>
 
       <section className={styles.grid}>
         <div className={styles.card}>
-          <div className={styles.cardTitle}><span>Agents</span><b>{agents.filter(a => a.status === "active").length} active</b></div>
+          <div className={styles.cardTitle}><span>Agents</span><b>{liveAgents} live · {agents.length - liveAgents} stale</b></div>
           <div className={styles.list}>
             {agents.map(agent => (
               <div className={styles.row} key={agent.id}>
-                <span><i className={agent.status === "active" ? styles.dot : styles.dotMuted} />{agent.name}</span>
-                <small>{agent.provider ?? "native"}</small>
+                <span><i className={agent.heartbeatFresh ? styles.dot : styles.dotMuted} />{agent.name}</span>
+                <small>{agent.heartbeatFresh ? "live" : "stale"} · {agent.provider ?? "native"}</small>
               </div>
             ))}
           </div>
@@ -178,6 +196,48 @@ export default function CommandPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className={styles.grid}>
+        <div className={styles.card}>
+          <div className={styles.cardTitle}><span>Shared skills</span><b>{skills.filter(skill => skill.enabled).length} enabled</b></div>
+          {skills.length === 0 ? (
+            <p className={styles.empty}>No skills are registered yet. The uploaded Codex archive is deprecated; only reviewed, compatible skills should be enabled.</p>
+          ) : (
+            <div className={styles.list}>
+              {skills.map(skill => (
+                <div className={styles.row} key={skill.id}>
+                  <span>{skill.name}</span>
+                  <small>{skill.enabled ? "enabled" : "disabled"} · {skill.source ?? "local"}</small>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className={styles.card}>
+          <div className={styles.cardTitle}><span>Connections</span><b>{connections.length} registered</b></div>
+          {connections.length === 0 ? (
+            <p className={styles.empty}>No external connections are registered in the shared control plane yet.</p>
+          ) : (
+            <div className={styles.list}>
+              {connections.map(connection => (
+                <div className={styles.row} key={connection.id}>
+                  <span>{connection.name}</span>
+                  <small title={connection.endpoint ?? undefined}>{connection.status} · {connection.kind}</small>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className={styles.card}>
+        <div className={styles.cardTitle}><span>Hermes verification</span><b>Existing Supabase function</b></div>
+        <p className={styles.empty}>Open the signed-in verification console to run one non-financial health check and confirm the result is persisted in the shared job ledger.</p>
+        <a href={VERIFICATION_URL} target="_blank" rel="noreferrer" style={{ color: "#d7e0d8", fontSize: 13, textDecoration: "underline" }}>
+          Open Hermes verification →
+        </a>
       </section>
 
       <nav className={styles.nav} aria-label="Command navigation">

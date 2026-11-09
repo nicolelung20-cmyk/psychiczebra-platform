@@ -31,7 +31,6 @@ export default function HermesPage() {
       }
       setSessionReady(true);
       try {
-        const fibonacciMatch = /^(fib|fibonacci) (-?[0-9]+)$/i.exec(commandText);
       const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-gateway`, {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
         });
@@ -66,6 +65,7 @@ export default function HermesPage() {
       const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       const { data } = await supabase.auth.getSession();
       if (!data.session) throw new Error("Secure Hermes session required.");
+      const fibonacciMatch = /^(fib|fibonacci) (-?[0-9]+)$/i.exec(commandText);
       const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-gateway`, {
         method: "POST",
         headers: {

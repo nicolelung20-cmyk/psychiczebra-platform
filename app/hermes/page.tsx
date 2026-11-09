@@ -6,7 +6,7 @@ import { createBrowserClient } from "@supabase/ssr";
 type Message = { role: "user" | "assistant"; content: string };
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export default function HermesPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -35,7 +35,7 @@ export default function HermesPage() {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
         });
         const j = await r.json();
-        setStatus(r.ok && j?.status === "active" ? "Online" : "Degraded");
+        setStatus(r.ok && j?.policy === "free_only" && j?.paid_models_allowed === false ? (j?.providers?.length ? "Free-only · ready" : "Connected · no free model configured") : "Degraded");
       } catch {
         setStatus("Offline");
       }
@@ -72,20 +72,23 @@ export default function HermesPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          command: "run",
-          input: commandText,
+          command: "chat",
+          messages: [
+            ...messages.slice(1).slice(-10),
+            { role: "user", content: commandText },
+          ],
         }),
       });
       const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j?.detail || j?.error || "Hermes execution failed");
+      if (!r.ok || !j.ok || typeof j.message !== "string" || !j.message.trim() || j.ai_policy !== "free_only") throw new Error(j?.detail || j?.error || "Hermes chat failed or did not confirm free-only routing.");
       setMessages((m) => [
         ...m,
         {
           role: "assistant",
-          content: j.message || `Queued for Hermes execution. Job ${j.job_id ?? "created"}.`,
+          content: `${j.message}\n\n[${j.provider ?? "unknown provider"} · ${j.model ?? "unknown model"} · free-only]`,
         },
       ]);
-      setStatus("Running");
+      setStatus(`Connected · ${j.provider ?? "free-only"}`);
     } catch (err) {
       setMessages((m) => [...m, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}` }]);
     } finally {

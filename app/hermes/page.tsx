@@ -31,7 +31,8 @@ export default function HermesPage() {
       }
       setSessionReady(true);
       try {
-        const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-gateway`, {
+        const fibonacciMatch = /^(fib|fibonacci) (-?[0-9]+)$/i.exec(commandText);
+      const r = await fetch(`${SUPABASE_URL}/functions/v1/hermes-gateway`, {
           headers: { Authorization: `Bearer ${data.session.access_token}` },
         });
         const j = await r.json();
@@ -72,7 +73,8 @@ export default function HermesPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          command: "chat",
+          command: fibonacciMatch ? "fibonacci" : "chat",
+          ...(fibonacciMatch ? { n: Number(fibonacciMatch[2]) } : {}),
           messages: [
             ...messages.slice(1).slice(-10),
             { role: "user", content: commandText },
@@ -80,15 +82,15 @@ export default function HermesPage() {
         }),
       });
       const j = await r.json();
-      if (!r.ok || !j.ok || typeof j.message !== "string" || !j.message.trim() || j.ai_policy !== "free_only") throw new Error(j?.detail || j?.error || "Hermes chat failed or did not confirm free-only routing.");
+      if (!r.ok || !j.ok || (fibonacciMatch ? typeof j.result !== "string" : (typeof j.message !== "string" || !j.message.trim() || j.ai_policy !== "free_only"))) throw new Error(j?.detail || j?.message || j?.error || "Hermes request failed or did not confirm the required policy.");
       setMessages((m) => [
         ...m,
         {
           role: "assistant",
-          content: `${j.message}\n\n[${j.provider ?? "unknown provider"} · ${j.model ?? "unknown model"} · free-only]`,
+          content: fibonacciMatch ? `F(${j.n}) = ${j.result}\n\n[Exact integer · ${j.utility ?? "unverified utility"} · authenticated Hermes gateway]` : `${j.message}\n\n[${j.provider ?? "unknown provider"} · ${j.model ?? "unknown model"} · free-only]`,
         },
       ]);
-      setStatus(`Connected · ${j.provider ?? "free-only"}`);
+      setStatus(fibonacciMatch ? `Connected · ${j.utility ?? "universal compute"}` : `Connected · ${j.provider ?? "free-only"}`);
     } catch (err) {
       setMessages((m) => [...m, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : "Unknown error"}` }]);
     } finally {
@@ -138,6 +140,8 @@ export default function HermesPage() {
         </button>
       </form>
 
+
+      <p style={{ marginTop: 8, fontSize: 12, opacity: .6 }}>Try <code>fibonacci 1000</code> to run the authenticated universal compute utility.</p>
       <p style={{ marginTop: 12, fontSize: 12, opacity: .6 }}>
         Hermes is the operating layer. Consequential financial transfers, live trading, contracts, and similar high-impact actions remain approval-gated.
       </p>

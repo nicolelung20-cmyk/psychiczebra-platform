@@ -79,7 +79,7 @@ export default function HermesPage() {
 
   async function signInWithApple() {
     setAuthMessage("");
-    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_KEY);
     const redirectTo = new URL("/auth/callback?next=/hermes", window.location.origin).toString();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "apple",

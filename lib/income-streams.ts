@@ -7,13 +7,28 @@ export const incomeStreamCatalog = {
 } as const;
 
 export type IncomeStream = keyof typeof incomeStreamCatalog;
+export type BillingMode = "test" | "live";
 
 export function resolveIncomeStream(stream: unknown): IncomeStream {
-  if (typeof stream === "string" && stream in incomeStreamCatalog) return stream as IncomeStream;
+  if (typeof stream === "string" && Object.hasOwn(incomeStreamCatalog, stream)) return stream as IncomeStream;
   return "elevat-pro";
 }
 
-export function resolvePriceId(stream: IncomeStream) {
+export function resolvePriceId(stream: IncomeStream, billingMode: BillingMode = "live") {
   const config = incomeStreamCatalog[stream];
+  if (billingMode === "test") {
+    // Never fall back to a live price in a test-mode deployment.
+    return process.env[`${config.env}_TEST`] ?? (stream === "elevat-pro" ? process.env.STRIPE_PRICE_ID_TEST : undefined);
+  }
   return process.env[config.env] ?? (stream === "elevat-pro" ? process.env.STRIPE_PRICE_ID : undefined);
+}
+
+export function resolveProductId(stream: IncomeStream, billingMode: BillingMode = "live") {
+  const config = incomeStreamCatalog[stream];
+  if (billingMode === "test") {
+    const envName = `STRIPE_PRODUCT_${stream.toUpperCase().replaceAll("-", "_")}_TEST`;
+    // Test product IDs must be configured explicitly; live IDs are never reused.
+    return process.env[envName];
+  }
+  return config.product;
 }

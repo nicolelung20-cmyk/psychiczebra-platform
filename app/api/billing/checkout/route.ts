@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { normalizeAttribution } from "@/lib/attribution";
 import { createUserClient } from "@/lib/supabase/server";
-import { incomeStreamCatalog, resolveIncomeStream, resolvePriceId } from "@/lib/income-streams";
+import { incomeStreamCatalog, resolveIncomeStream, resolvePriceId, resolveProductId } from "@/lib/income-streams";
+import { getStripeMode, getStripeSecretKey } from "@/lib/stripe-config";
 
 type CheckoutRequest = { attribution?: unknown; stream?: unknown };
 
@@ -16,9 +17,10 @@ async function parseCheckoutRequest(request: Request): Promise<CheckoutRequest> 
 export async function POST(request: Request) {
   const accessToken = request.headers.get("authorization")?.replace(/^Bearer\s+/, "");
   if (!accessToken) return NextResponse.json({ error: "Please sign in to upgrade." }, { status: 401 });
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
+  const stripeMode = getStripeMode();
+  const stripeKey = getStripeSecretKey();
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-  if (!stripeKey || !appUrl) return NextResponse.json({ error: "Billing is not configured yet." }, { status: 503 });
+  if (!stripeKey || !appUrl) return NextResponse.json({ error: "Billing is not configured for this environment." }, { status: 503 });
 
   let checkoutRequest: CheckoutRequest;
   try { checkoutRequest = await parseCheckoutRequest(request); }
@@ -26,8 +28,11 @@ export async function POST(request: Request) {
 
   const stream = resolveIncomeStream(checkoutRequest.stream);
   const streamConfig = incomeStreamCatalog[stream];
-  const priceId = resolvePriceId(stream);
-  if (!priceId) return NextResponse.json({ error: "The selected income stream is not configured." }, { status: 503 });
+  const priceId = resolvePriceId(stream, stripeMode);
+  const productId = resolveProductId(stream, stripeMode);
+  if (!priceId || !productId) {
+    return NextResponse.json({ error: `The ${stripeMode}-mode product and price are not fully configured.` }, { status: 503 });
+  }
 
   let attribution;
   try { attribution = normalizeAttribution(checkoutRequest.attribution); }
@@ -38,13 +43,12 @@ export async function POST(request: Request) {
     const { data: auth, error } = await supabase.auth.getUser();
     if (error || !auth.user?.email) return NextResponse.json({ error: "Your session has expired. Sign in again." }, { status: 401 });
 
-    // Stripe IDs travel in signed Checkout metadata; the webhook maps the
-    // Stripe product ID to the internal revenue_products UUID before fulfillment.
     const metadata = {
       user_id: auth.user.id,
       income_stream: stream,
-      product_id: streamConfig.product,
+      product_id: productId,
       price_id: priceId,
+      stripe_mode: stripeMode,
       ...attribution,
     };
     const mode = streamConfig.mode;
@@ -52,11 +56,10 @@ export async function POST(request: Request) {
       mode,
       "line_items[0][price]": priceId,
       "line_items[0][quantity]": "1",
-      success_url: `${appUrl}/?checkout=success&stream=${stream}`,
+      success_url: `${appUrl}/?checkout=success&stream=${stream}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${appUrl}/?billing=cancelled&stream=${stream}`,
       customer_email: auth.user.email,
     };
-    // Stable customer IDs are required to reconcile one-time payments safely.
     if (mode === "payment") params.customer_creation = "always";
     for (const [key, value] of Object.entries(metadata)) {
       params[`metadata[${key}]`] = value;
@@ -73,7 +76,7 @@ export async function POST(request: Request) {
       console.error("Stripe checkout creation failed:", result.error?.message);
       return NextResponse.json({ error: "Unable to create a checkout session." }, { status: 502 });
     }
-    return NextResponse.json({ url: result.url });
+    return NextResponse.json({ url: result.url, mode: stripeMode });
   } catch (error) {
     console.error("Checkout request failed:", error);
     return NextResponse.json({ error: "Billing is not configured correctly yet." }, { status: 500 });

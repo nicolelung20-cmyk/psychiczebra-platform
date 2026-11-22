@@ -10,6 +10,6 @@ test("routes trading commands to Trading Research Agent and requires approval", 
   assert.deepEqual(routeCommand("run the memecoin trading bot"), { agent: "Trading Research Agent", approvalRequired: true });
 });
 
-test("routes unknown commands to Orchestrator", () => {
-  assert.deepEqual(routeCommand("show me system status"), { agent: "Orchestrator", approvalRequired: false });
+test("routes unknown commands to the registered Command Orchestrator", () => {
+  assert.deepEqual(routeCommand("show me system status"), { agent: "Command Orchestrator", approvalRequired: false });
 });

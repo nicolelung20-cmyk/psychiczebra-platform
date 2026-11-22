@@ -8,7 +8,7 @@ export default async function DeliveryPage({
   searchParams: Promise<{ session_id?: string }>;
 }) {
   const { session_id: sessionId } = await searchParams;
-  const validSession = typeof sessionId === "string" && /^cs_live_[A-Za-z0-9]+$/.test(sessionId);
+  const validSession = typeof sessionId === "string" && /^cs_(?:test|live)_[A-Za-z0-9]+$/.test(sessionId);
 
   return (
     <main className="site-shell" style={{ maxWidth: 760, paddingTop: 64, paddingBottom: 96 }}>

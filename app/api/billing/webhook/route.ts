@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { getStripeMode, getStripeWebhookSecret } from "@/lib/stripe-config";
 
 function validSignature(signature: string | null, body: string, secret: string) {
   if (!signature) return false;
@@ -46,15 +47,17 @@ type StripeInvoice = {
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
 
 export async function POST(request: Request) {
-  const secret = process.env.STRIPE_WEBHOOK_SECRET;
+  const stripeMode = getStripeMode();
+  const secret = getStripeWebhookSecret("billing");
   const body = await request.text();
   if (!secret || !validSignature(request.headers.get("stripe-signature"), body, secret)) {
     return json({ error: "Invalid webhook signature." }, 400);
   }
 
-  let event: { id?: string; type?: string; data?: { object?: CheckoutSession | StripeSubscription | StripeInvoice } };
+  let event: { id?: string; type?: string; livemode?: boolean; data?: { object?: CheckoutSession | StripeSubscription | StripeInvoice } };
   try { event = JSON.parse(body); }
   catch { return json({ error: "Invalid event payload." }, 400); }
+  if (event.livemode !== (stripeMode === "live")) return json({ error: "Stripe event mode does not match this deployment." }, 400);
 
   const supported = new Set([
     "checkout.session.completed",

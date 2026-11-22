@@ -15,5 +15,5 @@ export function routeCommand(command) {
   if (/\b(build|code|deploy|fix|ship|implement)\b/.test(text)) {
     return { agent: "Coder", approvalRequired: false };
   }
-  return { agent: "Orchestrator", approvalRequired: false };
+  return { agent: "Command Orchestrator", approvalRequired: false };
 }
